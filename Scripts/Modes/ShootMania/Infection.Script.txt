@@ -63,12 +63,12 @@
 #Const      S_MinPlayers            2           //as "minimum players"
 #Const      Version                 "2017-02-22"
 
-#Const      C_SmellDistSquared      400.0
+#Setting    S_SmellMaxDist          20.0        as "smell distance"
 #Const      C_IdleSpec              60000
 #Const      C_Survivor              "$f00Survivor"
 #Const      C_Infected              "$360Infected"
 #Const      C_FirstInfected         "$360First Infected"
-#Const      C_NearDistance          1.7
+#Setting    S_InfectionDistance     1.7         as "infection distance"
 #Const      C_InfectionTick         30
 #Const      C_CountTick             500
 #Const      C_DefaultColor          <1., 0., 0.>
@@ -669,24 +669,23 @@ if (LastInfectionTick + C_InfectionTick < Now)
 
         if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && IsInfected(Player))
         {
-            declare DMin = 1000.;
+            declare minSmellDist = S_SmellMaxDist;
             foreach (Victim in AllPlayers)
             {
                 if (Victim.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && !IsInfected(Victim))
                 {
-                    declare Dist = DistSquare(Player.Position, Victim.Position);
-                    //if (ML::Abs(Player.Position.X - Victim.Position.X) < C_NearDistance && ML::Abs(Player.Position.Y - Victim.Position.Y) < C_NearDistance * 2. && ML::Abs(Player.Position.Z - Victim.Position.Z) < C_NearDistance)
-                    if (Dist < C_NearDistance)
+                    declare distance = ML::Distance(Player.Position, Victim.Position);
+                    if (distance < S_InfectionDistance)
                     {
                         Infect(Victim, Player);
                         +++OnTouch+++
                     }
-                    if (Dist < DMin)
+                    if (distance < minSmellDist)
                     {
-                        DMin = Dist;
+                        minSmellDist = distance;
                     }
                 }
-                Net_SurvNear = 1. - (DMin / C_SmellDistSquared);
+                Net_SurvNear = 1.0 - minSmellDist / S_SmellMaxDist;
             }
         }
     }
@@ -1497,13 +1496,6 @@ Void InfectRandomSurvivor()
     {
         Infect(AllPlayers[Survivors[ML::Rand(0, Survivors.count - 1)]], Null);
     }
-}
-
-Real DistSquare(Vec3 Pos1, Vec3 Pos2)
-{
-    return (Pos1.X - Pos2.X) * (Pos1.X - Pos2.X)
-        + (Pos1.Y - Pos2.Y) * (Pos1.Y - Pos2.Y)
-        + (Pos1.Z - Pos2.Z) * (Pos1.Z - Pos2.Z);
 }
 
 Void InfectLogin(Text Login)
