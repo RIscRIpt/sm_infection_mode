@@ -1522,36 +1522,3 @@ Void InfectLogin(Text Login)
     }
 }
 
-Ident[] QuickSortPlayers(Ident[] _Players)
-{
-    if (_Players.count < 2)
-    {
-        return _Players;
-    }
-    declare Ident Pivot = _Players[0];
-    declare Ident[] Left;
-    declare Ident[] Right;
-
-    for (I, 1, _Players.count - 1)
-    {
-        if (AllPlayers[_Players[I]].Position.X < AllPlayers[Pivot].Position.X)
-        {
-            Left.add(_Players[I]);
-        }
-        else
-        {
-            Right.add(_Players[I]);
-        }
-    }
-
-    Left = QuickSortPlayers(Left);
-    Right = QuickSortPlayers(Right);
-
-    Left.add(Pivot);
-    foreach (Player, Right)
-    {
-        Left.add(Player);
-    }
-    return Left;
-}
-
