@@ -38,52 +38,47 @@
 #Command Infect                         (Integer)   as "infect random players (count)"
 
 //Scores
-#Const  S_InfectionScore                4           //as "infection score"
-#Const  S_HitScore                      1           //as "hit score"
-#Const  S_SurvivalScore                 1           //as "survival score"
-#Const  S_FirstInfectedScore            0.5         //as "first infected score"
+#Const      S_InfectionScore        4           //as "infection score"
+#Const      S_HitScore              1           //as "hit score"
+#Const      S_SurvivalScore         1           //as "survival score"
+#Const      S_FirstInfectedScore    0.5         //as "first infected score"
 //Limits
-#Setting S_TimeLimit                    300000      as "time limit"
-#Setting S_ScoreLimit                   100         as "score limit"
-#Setting S_RoundLimit                   20          as "round limit"
+#Setting    S_TimeLimit             300000      as "time limit"
+#Setting    S_ScoreLimit            100         as "score limit"
+#Setting    S_RoundLimit            20          as "round limit"
 //Rules
-#Const  S_RespawnOnInfection            True        //as "respawn on infection"
-#Const  S_FirstInfectedShoot            True        //as "allow first infected to shoot"
-#Const  S_InfectionTime                 10000       //as "time till first infection"
-#Setting S_HitSurvivors                 False       as "allow hitting survivors"
-#Const   S_InfectNewPlayers             True        //as "infect players who joined later"
-#Const  S_SurvivorStamina               1.0         //as "survivor stamina (0.1-3.0)"
-#Const  S_SurvivorStaminaGain           0.7         //as "survivor stamina gain (0.0-1.0)"
-#Const  S_InfectedStamina               2.0         // as "infected stamina (0.1-3.0)"
-#Const  S_InfectedStaminaGain           1.0         //as "infected stamina gain (0.0-1.0)"
-#Const  S_InfectedArmor                 2           //as "infected armor (1-10)"
-#Const  S_BetaGameplay                  False       //as "old mp3 beta gameplay"
-#Setting S_Snowballing                  True        as "enable snowballing"
-//Other settings
-#Const  S_MinPlayers                    2           //as "minimum players"
-#Const  Version                         "2016-05-24"
+#Const      S_RespawnOnInfection    True        //as "respawn on infection"
+#Const      S_FirstInfectedShoot    True        //as "allow first infected to shoot"
+#Const      S_InfectionTime         10000       //as "time till first infection"
+#Setting    S_HitSurvivors          False       as "allow hitting survivors"
+#Const      S_InfectNewPlayers      True        //as "infect players who joined later"
+#Const      S_SurvivorStamina       1.0         //as "survivor stamina (0.1-3.0)"
+#Const      S_SurvivorStaminaGain   0.7         //as "survivor stamina gain (0.0-1.0)"
+#Const      S_InfectedStamina       2.0         // as "infected stamina (0.1-3.0)"
+#Const      S_InfectedStaminaGain   1.0         //as "infected stamina gain (0.0-1.0)"
+#Const      S_InfectedArmor         2           //as "infected armor (1-10)"
+#Setting    S_Snowballing           True        as "enable snowballing"
 
-#Const C_SmellDist              400.0 // squared
-#Const C_IdleSpec               60000
-#Const C_Survivor               "$f00Survivor"
-#Const C_Infected               "$360Infected"
-#Const C_FirstInfected          "$360First Infected"
-#Const C_NearDistance           1.7
-#Const C_InfectionTick          30
-#Const C_CLRate                 40
-#Const C_CLDiff                 3
-#Const C_CountTick              500
-#Const C_DefaultColor           <1., 0., 0.>
-#Const C_InfectedColor          <0.2, .4, 0.>
-#Const C_RoundPauseTime         4000
-#Const C_MatchPauseTime         6000
-#Const C_DbgBots                0
-#Const C_DbgPlayers             0 // change this
-//#Const C_InfectedSkin         "file://Skins/Models/ArenaPlayer/Zombie.zip"
+//Other constants
+#Const      S_MinPlayers            2           //as "minimum players"
+#Const      Version                 "2017-02-22"
 
-#Const C_ImgBaseDir             "file://Media/Manialinks/Shootmania/Common/"
+#Const      C_SmellDistSquared      400.0
+#Const      C_IdleSpec              60000
+#Const      C_Survivor              "$f00Survivor"
+#Const      C_Infected              "$360Infected"
+#Const      C_FirstInfected         "$360First Infected"
+#Const      C_NearDistance          1.7
+#Const      C_InfectionTick         30
+#Const      C_CountTick             500
+#Const      C_DefaultColor          <1., 0., 0.>
+#Const      C_InfectedColor         <0.2, .4, 0.>
+#Const      C_RoundPauseTime        4000
+#Const      C_MatchPauseTime        6000
+#Const      C_DbgBots               0
+#Const      C_DbgPlayers            0
 
-#Const Description  "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
+#Const      Description             "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
 
 /* -------------------------------------- */
 // Globales
@@ -95,15 +90,11 @@ declare Integer NbInfs;
 declare Integer NbPlayers;
 declare Text FirstInfectedLogin;
 declare Ident[] CompList;
-declare Integer CLCounter;
 //declare Ident InfectedModelId;
 
 
 ***InitServer***
 ***
-/*ItemList_Begin();
-InfectedModelId = ItemList_Add(C_InfectedSkin);
-ItemList_End();*/
 log ("Init Infection ...");
 UIManager.UILayerDestroyAll();
 UIManager.UIAll.AltMenuNoCustomScores = True;
@@ -117,14 +108,6 @@ RoundInfoLayerId = UIManager.UILayerCreate().Id;
 // Set mode options
 UseClans = False;
 UsePvPCollisions = False;
-if (S_BetaGameplay)
-{
-    Gameplay = ::EGameplay::Mp3Beta0;
-}
-else
-{
-    Gameplay = ::EGameplay::Default;
-}
 SM::SetupDefaultVisibility();
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 
@@ -264,7 +247,6 @@ declare FirstInfected = NullId;
 declare LastScoreLimit = S_ScoreLimit;
 ScoresTable::SetDefaultFooterStats("Version: " ^ Version ^ " Scorelimit: " ^ S_ScoreLimit);
 MB_UseSectionRound = True;
-CLCounter = 0;
 ***
 
 
@@ -654,16 +636,6 @@ if (LastInfectionTick + C_InfectionTick < Now)
     KillLeavers();
     LastInfectionTick = Now;
 
-    /*if (CLCounter % C_CLRate == 0)
-    {
-        BuildCompList();
-        CLCounter = 1;
-    }
-    else
-    {
-        CLCounter += 1;
-    }*/
-
     foreach (Player in AllPlayers)
     {
         if (Player.IsBot)
@@ -717,7 +689,7 @@ if (LastInfectionTick + C_InfectionTick < Now)
                         DMin = Dist;
                     }
                 }
-                Net_SurvNear = 1. - (DMin / C_SmellDist);
+                Net_SurvNear = 1. - (DMin / C_SmellDistSquared);
             }
         }
     }
