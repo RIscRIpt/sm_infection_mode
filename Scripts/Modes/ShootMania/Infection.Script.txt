@@ -86,8 +86,8 @@
 
 declare CSmMapLandmark[][Integer] SpawnQueue;
 declare Ident RoundInfoLayerId;
-declare Integer NbInfs;
 declare Integer NbPlayers;
+declare Integer NbInfected;
 declare Text FirstInfectedLogin;
 declare Ident[] CompList;
 //declare Ident InfectedModelId;
@@ -700,7 +700,7 @@ if (LastCountTick + C_CountTick < Now)
     UpdateCounts();
     UpdateSpectatorUI();
     LastCountTick = Now;
-    InfCount = NbInfs;
+    InfCount = NbInfected;
     PlayerCount = NbPlayers;
 }
 
@@ -762,12 +762,12 @@ if (EndTime > -1 && EndTime <= Now)
     }
 }
 
-if (InfectionStarted && NbInfs < 1)
+if (InfectionStarted && NbInfected < 1)
 {
     MB_StopRound = True;
 }
 
-if (NbInfs >= NbPlayers)
+if (NbInfected >= NbPlayers)
 {
     MB_StopRound = True;
 }
@@ -888,7 +888,7 @@ StartTime = -1;
 EndTime = -1;
 if (FirstInfected != NullId && AllPlayers.existskey(FirstInfected)
         && AllPlayers[FirstInfected].Score != Null
-        && NbInfs >= NbPlayers)
+        && NbInfected >= NbPlayers)
 {
     Scores::AddPoints(AllPlayers[FirstInfected], ML::NearestInteger(InfectedCount() * S_FirstInfectedScore));
 }
@@ -914,7 +914,7 @@ if (InfectedCount() >= PlayerCount())
 else if (EndTime > -1 && EndTime <= Now)
 {
     UIManager.UIAll.BigMessage          = "Time limit reached.";
-    declare Survivors = NbPlayers - NbInfs;
+    declare Survivors = NbPlayers - NbInfected;
     if (Survivors > 1)
     {
         UIManager.UIAll.StatusMessage   = TL::Compose("$360%1 $fffplayers survived.", TL::ToText(Survivors));
@@ -930,13 +930,13 @@ else if (NbPlayers < S_MinPlayers)
     UIManager.UIAll.StatusMessage       = TL::Compose("At least $f00%1 $fffplayers are needed.", TL::ToText(S_MinPlayers));
     MB_SectionRoundNb -= 1;
 }
-else if (NbInfs < 1)
+else if (NbInfected < 1)
 {
     UIManager.UIAll.BigMessage          = "No more infected players.";
     MB_SectionRoundNb -= 1;
 }
 
-if (NbInfs > 0)
+if (NbInfected > 0)
 {
     FirstInfectedLogin = "";
 }
@@ -1361,10 +1361,10 @@ Void UpdateMSM()
 
 Void UpdateCounts()
 {
-    declare LastNbInfs = NbInfs;
-    NbInfs = InfectedCount();
+    declare LastNbInfs = NbInfected;
+    NbInfected = InfectedCount();
     NbPlayers = PlayerCount();
-    if (LastNbInfs > 1 && NbInfs == 1)
+    if (LastNbInfs > 1 && NbInfected == 1)
     {
         foreach (Player, Players)
         {
@@ -1450,7 +1450,7 @@ Void Infect(CSmPlayer Player, CSmPlayer Infecter)
             }
             SurvivalScore += 1;
             Scores::AddPoints(Player, S_SurvivalScore);
-            if (NbInfs >= NbPlayers - 1)
+            if (NbInfected >= NbPlayers - 1)
             {
                 Scores::AddPoints(Player, ML::CeilingInteger(SurvivalScore * 0.5));
             }
