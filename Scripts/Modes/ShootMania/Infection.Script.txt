@@ -89,7 +89,6 @@ declare Ident RoundInfoLayerId;
 declare Integer NbPlayers;
 declare Integer NbInfected;
 declare Text FirstInfectedLogin;
-declare Ident[] CompList;
 //declare Ident InfectedModelId;
 
 
@@ -1558,22 +1557,3 @@ Ident[] QuickSortPlayers(Ident[] _Players)
     return Left;
 }
 
-Void BuildCompList()
-{
-    declare Ident[] _Players;
-    foreach (Player, AllPlayers)
-    {
-        if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned)
-        {
-            _Players.add(Player.Id);
-        }
-    }
-
-    CompList = QuickSortPlayers(_Players);
-
-    for (I, 0, CompList.count - 1)
-    {
-        declare _CompPos for AllPlayers[CompList[I]] = 0;
-        _CompPos = I;
-    }
-}
