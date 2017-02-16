@@ -720,20 +720,6 @@ if (EndTime > -1 && EndTime <= Now)
         }
         if (Player == Null)
         {
-            /*declare Rand = RealRandom(0, 100) % (Players.count + BotPlayers.count);
-
-            if (Rand < 0)
-            {
-                Rand = Rand * -1;
-            }
-            if (Rand > Players.count - 1)
-            {
-                Player = BotPlayers[Rand - Players.count];
-            }
-            else
-            {
-                Player = Players[Rand];
-            }*/
             Player = GetFirstInfected();
         }
         +++FirstInfection+++
