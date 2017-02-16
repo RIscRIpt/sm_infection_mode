@@ -271,9 +271,7 @@ foreach (Player in AllPlayers)
 }
 ScoresTable::Build(True, False);
 
-if ((ServerLogin == "pat07"
-    || ServerLogin == "mewin"
-    || ServerLogin == "") && C_DbgBots > 0)
+if (C_DbgBots > 0)
 {
     for (I, 1, C_DbgBots)
     {
