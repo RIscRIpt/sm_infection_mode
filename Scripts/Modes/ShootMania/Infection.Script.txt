@@ -78,6 +78,8 @@
 #Const      C_DbgBots               0
 #Const      C_DbgPlayers            0
 
+#Const      C_TxtRules              "Free for all. You spawn as a survivor, if you die you respawn infected. Infected players can't shoot, but can infect other players by touching them. The match ends when a player reaches the score limit or the round limit is reached."
+#Const      C_TxtRoundEnd           "A round ends either if no survivors are left or if the time limit is reached."
 #Const      Description             "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
 
 /* -------------------------------------- */
@@ -116,8 +118,8 @@ UpdateSpawns();
 // Create the rules
 declare ModeName = "Infection";
 SpawnScreen::SetModeName(ModeName);
-SpawnScreen::AddSubsection("Rules", "Free for all. You spawn as a survivor, if you die you respawn infected. Infected players can't shoot, but can infect other players by touching them. The match ends when a player reaches the score limit or the round limit is reached.", 0.);
-SpawnScreen::AddSubsection("Round end", "A round ends either if no survivors are left or if the time limit is reached.", 35.);
+SpawnScreen::AddSubsection("Rules", C_TxtRules, 0.);
+SpawnScreen::AddSubsection("Round end", C_TxtRoundEnd, 35.);
 SpawnScreen::AddSubsection("Description", """- Survivors are $f00red$g, Infecteds are $360green$g.
 - the first infected gets some points if all players are infected
 - the first infected can shoot until there is a second infected
