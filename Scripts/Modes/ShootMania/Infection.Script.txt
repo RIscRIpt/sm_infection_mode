@@ -89,8 +89,6 @@ declare Ident RoundInfoLayerId;
 declare Integer NbPlayers;
 declare Integer NbInfected;
 declare Text FirstInfectedLogin;
-//declare Ident InfectedModelId;
-
 
 ***InitServer***
 ***
