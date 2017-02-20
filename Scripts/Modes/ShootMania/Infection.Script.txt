@@ -51,8 +51,8 @@
 #Setting S_SurvivorDetectorMaxDist          20.0        as "survivor detector max distance"
 #Setting S_RespawnDelay                     1000        as "respawn delay"
 #Setting S_CanLeaveMapFor                   3000        as "can leave map for (ms)"
-
-#Const   C_IdleSpec                         60000
+#Setting S_ForceSpecAfter                   60000       as "force inactive players to spectators after (ms)"
+#Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
 
 #Const   C_MinimalPlayerCount               2
 #Const   C_InfectOnRespawn                  True        //as "infect on respawn"
@@ -91,6 +91,10 @@
 #Const   C_TxtRoundEnd                      "A round ends either if no survivors are left or if the time limit is reached."
 #Const   Description                        "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
 
+#Const   C_PlayerIsIdle                     "$z$s is idle."
+#Const   C_WasIdleTooLongMovingToSpec       "$z$s was idle for too long. Moving to spectators."
+#Const   C_IdlePlayerWarning                "$sYou are considered inactive!"
+
 #Const   C_TxtYouInfectedA                  "$0f0You infected $fff%1"
 #Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
 #Const   C_TxtAInfectedB                    "%1 $z$sinfected %2"
@@ -108,7 +112,7 @@
 
 #Const   C_StaminaMax                       3600
 
-#Const   C_CondGate_TxtPrefix               "[CondGates] "
+#Const   C_CondGate_TxtPrefix               "$f00[CondGates] $z$s"
 
 #Const   C_CondGateCountSource              0
 #Const   C_CondGateComparison               1
@@ -445,6 +449,7 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
         if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
             declare Integer SpawnTime for Player;
             if(C_InfectOnRespawn && SpawnTime != -1 && !IsInfected(Player)) {
+                // If not a new player has respawned, infect him
                 OnInfect(Player, Null);
             }
             SpawnAndInitPlayer(Player);
@@ -475,6 +480,7 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
             // Check if leaving the map, and take some actions
             ManageMapLeaver(Player);
         }
+        ManageIdlePlayer(Player);
     }
 
     Message::Loop();
@@ -1082,11 +1088,6 @@ Void OnInfect(CSmPlayer _Victim, CSmPlayer _Infector) {
 
     declare Integer SpawnTime for _Victim;
 
-    declare Text _InfectorLogin = "(null)";
-    if(_Infector != Null) {
-        _InfectorLogin = _Infector.Login;
-    }
-
     Infected            = True;
     Net_Infected        = True;
     Net_NearestSurvivor = 0.0;
@@ -1114,6 +1115,11 @@ Void OnInfect(CSmPlayer _Victim, CSmPlayer _Infector) {
         // Notify everyone about infection
         //Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), 4000, 1);
         //Message::SendBigMessage(_Victim, "$360Infected!", 4000, 1);
+
+        if(G_InfectedPlayerCount == 1 && S_InfectedShoot == 1) {
+            // Re-setup infector weapons
+            SetupInfectedWeapons(_Infector);
+        }
     }
 
     G_InfectedPlayerCount += 1;
@@ -1128,7 +1134,7 @@ Void OnInfect(CSmPlayer _Victim, CSmPlayer _Infector) {
     }
 
     ScoresTable::SetCustom1(_Victim, C_TxtInfected);
-    declare SurvivalTime = SpawnTime - Now;
+    declare SurvivalTime = Now - SpawnTime;
     if(SurvivalTime < 0) {
         SurvivalTime = 0;
     }
@@ -1229,6 +1235,32 @@ Void ManageMapLeaver(CSmPlayer _Player) {
     }
 }
 
+Void ManageIdlePlayer(CSmPlayer _Player) {
+    if(S_ForceSpecAfter <= 0) {
+        return;
+    }
+
+    if(_Player.IdleDuration < S_ForceSpecAfter) {
+        return;
+    }
+
+    declare Integer SpawnTime for _Player = Now;
+    if(Now - SpawnTime < S_CanIdleAfterSpawn) {
+        return;
+    }
+
+    Users_RequestSwitchToSpectator(_Player.User);
+    UIManager.UIAll.SendChat(_Player.Name ^ C_WasIdleTooLongMovingToSpec);
+    UIManager.UIAll.SendNotice(
+        C_PlayerIsIdle,
+        CUIConfig::ENoticeLevel::PlayerInfo,
+        Null,
+        CUIConfig::EAvatarVariant::Default,
+        CUIConfig::EUISound::Silence,
+        0
+    );
+}
+
 Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
     declare Tags = TL::Split("_", _Spawn.Tag);
     //declare Gauge <=> _Spawn.Gauge;
@@ -1257,6 +1289,12 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
         G_SurvivorSpawns.add(_Spawn);
         //Gauge.Clan = 0;
     }
+}
+
+Void CondGateWarning(Text _Warning) {
+    declare Text Message = C_CondGate_TxtPrefix ^ "Warning: " ^ _Warning;
+    log(Message);
+    UIManager.UIAll.SendChat(Message);
 }
 
 Boolean SetupGateConditions(CSmMapLandmark _Gate) {
@@ -1307,7 +1345,7 @@ Boolean SetupGateConditions(CSmMapLandmark _Gate) {
                 break;
             }
             if(CComparison == -1) {
-                log(C_CondGate_TxtPrefix ^ "Invalid comparison `" ^ Cond ^ "` in conditional gate: " ^ _Gate.Tag);
+                CondGateWarning("Invalid comparison `" ^ Cond ^ "` in conditional gate: " ^ _Gate.Tag);
                 continue;
             }
             switch(Split[0]) {
@@ -1316,15 +1354,15 @@ Boolean SetupGateConditions(CSmMapLandmark _Gate) {
                 case C_CondGateCountSource_TxtInfected  : CCountSource = C_CondGateCountSource_Infected;
             }
             if(CCountSource == -1) {
-                log(C_CondGate_TxtPrefix ^ "Invalid count source `" ^ Split[0] ^ "` in conditional gate: " ^ _Gate.Tag);
+                CondGateWarning("Invalid count source `" ^ Split[0] ^ "` in conditional gate: " ^ _Gate.Tag);
                 continue;
             }
             if(!UpdateAlways && (CCountSource == C_CondGateCountSource_Survivors || CCountSource == C_CondGateCountSource_Infected)) {
-                log(C_CondGate_TxtPrefix ^ "Warning condition dependednt on count source `" ^ Split[0] ^ "` makes no sense if updating only on round start!");
+                CondGateWarning("condition dependednt on count source `" ^ Split[0] ^ "` makes no sense if updating only on round start! Gate: " ^ _Gate.Tag);
             }
             CValue = TL::ToInteger(Split[1]);
             if(CValue == -1) {
-                log(C_CondGate_TxtPrefix ^ "Invalid count source `" ^ Split[1] ^ "` in conditional gate: " ^ _Gate.Tag);
+                CondGateWarning("Invalid value `" ^ Split[1] ^ "` in conditional gate: " ^ _Gate.Tag);
                 continue;
             }
             Conditions.add([CCountSource, CComparison, CValue, C_CondGateChain_AND]);
@@ -1416,7 +1454,7 @@ Text GenerateManialink() {
         <label style="TextRaceChrono" posn="122 -75" valign="center" halign="left" textcolor="fff" text="{{{Players.count}}}" id="Players"/>
         <label posn="128 -76" valign="center" halign="left" textcolor="fff" text="infected" />
 
-        <label style="TextTitle1" posn="0 20" halign="center" visible="false" textcolor="f00" id="Idle_Text">$sYou are considered inactive. Please move in order to not get kicked!</label>
+        <label style="TextTitle1" posn="0 20" halign="center" visible="false" textcolor="f00" id="Idle_Text">{{{C_IdlePlayerWarning}}}</label>
         <label style="TextRaceChrono" posn="0 15" halign="center" visible="false" id="Idle_Time" />
 
         <frame id="NearestSurvivorFrame">
@@ -1436,7 +1474,9 @@ Text GenerateManialink() {
             declare netread Net_PlayerCount     for Teams[0] = 0;
             declare netread Net_Infected        for InputPlayer = False;
             declare netread Net_NearestSurvivor for InputPlayer = 0.0;
-            declare NearestSurvivor = 0.0;
+
+            declare Real NearestSurvivor = 0.0;
+            declare Boolean IsSpawned = False;
 
             declare Label_Infected        = (Page.GetFirstChild("Infected")             as CMlLabel);
             declare Label_Players         = (Page.GetFirstChild("Players")              as CMlLabel);
@@ -1447,10 +1487,12 @@ Text GenerateManialink() {
             while(True) {
                 yield;
 
+                IsSpawned = InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned;
+
                 Label_Infected.Value = TL::ToText(Net_InfectedCount);
                 Label_Players.Value  = TL::ToText(Net_PlayerCount);
 
-                Frame_NearestSurvivor.Visible = Net_Infected && !IsSpectatorMode;
+                Frame_NearestSurvivor.Visible = Net_Infected && IsSpawned;
                 if(Frame_NearestSurvivor.Visible) {
                     LibManialink_AnimLoop();
                     if(Net_NearestSurvivor != NearestSurvivor) {
@@ -1467,14 +1509,19 @@ Text GenerateManialink() {
                     }
                 }
 
-                if(!IsSpectatorMode && InputPlayer.IdleDuration >= {{{C_IdleSpec * 0.8}}}) {
-                    Label_Idle_Text.Opacity = 0.5 + 0.5 * ML::Sin(Now / 200.);
-                    Label_Idle_Time.Value   = TL::TimeToText({{{C_IdleSpec}}} - InputPlayer.IdleDuration);
-                    Label_Idle_Text.Visible = True;
-                    Label_Idle_Time.Visible = True;
-                } else {
-                    Label_Idle_Text.Visible = False;
-                    Label_Idle_Time.Visible = False;
+                if({{{S_ForceSpecAfter > 0}}}) {
+                    if(IsSpawned && InputPlayer.IdleDuration >= {{{S_ForceSpecAfter * 0.8}}}) {
+                        declare Integer TimeLeft = {{{S_ForceSpecAfter}}} - InputPlayer.IdleDuration;
+                        Label_Idle_Text.Opacity  = 0.5 + 0.5 * ML::Sin(Now / (50.0 * ML::PI()));
+                        Label_Idle_Text.Visible  = True;
+                        if(TimeLeft >= 0) {
+                            Label_Idle_Time.Value = TL::TimeToText(TimeLeft);
+                        }
+                        Label_Idle_Time.Visible = TimeLeft >= 0;
+                    } else {
+                        Label_Idle_Text.Visible = False;
+                        Label_Idle_Time.Visible = False;
+                    }
                 }
             }
         }
