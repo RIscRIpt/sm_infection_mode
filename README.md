@@ -47,7 +47,7 @@ Where
   ```
   Gate_A:O:I=1|P<5
   ```
-  This gate is update during the round (`A`), and it is opened by default (`O`), but if there is only one infected player OR if there's less than 5 players on the server in total then the gate is closed (`I=1|P<5`).
+  This gate is updated during the round (`A`), and it is opened by default (`O`), but if there is only one infected player OR if there's less than 5 players on the server in total then the gate is closed (`I=1|P<5`).
   
 ## Credits
 - [Mewin](https://mewin.de/) for the original mode;
