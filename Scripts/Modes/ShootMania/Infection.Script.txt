@@ -54,6 +54,7 @@
 
 #Const   C_IdleSpec                         60000
 
+#Const   C_MinimalPlayerCount               2
 #Const   C_InfectOnRespawn                  True        //as "infect on respawn"
 #Const   C_InfectionTick                    30
 #Const   C_SurvivorColor                    <1.0, 0.0, 0.0>
@@ -66,6 +67,8 @@
 #Const   C_InfectedEnergyLevel              1.0
 #Const   C_RoundPauseTime                   4000
 #Const   C_MatchPauseTime                   6000
+
+#Const   C_MainManialinkLayer               "Infection_MainManialinkLayer"
 
 #Const   C_SurvivorTeamId                   0
 #Const   C_InfectedTeamId                   1
@@ -112,13 +115,13 @@
 #Const   C_CondGateValue                    2
 #Const   C_CondGateChain                    3
 
-#Const   C_CondGateCountSource_TxtPlayers         "P"
-#Const   C_CondGateCountSource_TxtSurvivors       "S"
-#Const   C_CondGateCountSource_TxtInfected        "I"
+#Const   C_CondGateCountSource_TxtPlayers   "P"
+#Const   C_CondGateCountSource_TxtSurvivors "S"
+#Const   C_CondGateCountSource_TxtInfected  "I"
 
-#Const   C_CondGateCountSource_Players            0
-#Const   C_CondGateCountSource_Survivors          1
-#Const   C_CondGateCountSource_Infected           2
+#Const   C_CondGateCountSource_Players      0
+#Const   C_CondGateCountSource_Survivors    1
+#Const   C_CondGateCountSource_Infected     2
 
 #Const   C_CondGateComparison_LT            0
 #Const   C_CondGateComparison_EQ            1
@@ -215,8 +218,8 @@ declare TabsLayer <=> Tabs::CreateTabPaneLayer(
 TabsLayer.Type = CUILayer::EUILayerType::AltMenu;
 UIManager.UIAll.UILayers.add(TabsLayer);
 ScoresTable::GetLayerScoresTable().Type = CUILayer::EUILayerType::Normal;
-declare Tmp = Layers::Create("Infection", UpdateRoundML());
-Tmp = Layers::Create("InfSpectator", UpdateSpecML());
+
+Layers::Create(C_MainManialinkLayer, GenerateManialink());
 ***
 
 ***StartMap***
@@ -364,8 +367,9 @@ declare UI <=> UIManager.GetUI(Player);
 Tabs::UseTabs(UI, "ScoresTab");
 Tabs::AlwaysShowScore(UI, True);
 
-Layers::Attach("Infection", Player.Id);
-Layers::Detach("InfSpectator", Player.Id);
+if(Layers::IsMissing(C_MainManialinkLayer, Player.Id)) {
+    Layers::Attach(C_MainManialinkLayer, Player.Id);
+}
 ***
 
 ***OnNewSpectator***
@@ -390,8 +394,9 @@ if(UI != Null) {
     UI.SpectatorForceCameraType = 15;
 }
 
-Layers::Detach("Infection", Spectator.Id);
-Layers::Attach("InfSpectator", Spectator.Id);
+if(Layers::IsMissing(C_MainManialinkLayer, Spectator.Id)) {
+    Layers::Attach(C_MainManialinkLayer, Spectator.Id);
+}
 ***
 
 ***PlayLoop***
@@ -404,6 +409,14 @@ declare Integer Prev_InfectedPlayerCount for This = -1;
 
 // Cannot be done more efficiently as there's no event "player left"
 if(Prev_PlayerCount != Players.count) {
+    if(Prev_PlayerCount < C_MinimalPlayerCount && Players.count >= C_MinimalPlayerCount) {
+        // If it's enough players now, restart round!
+        MB_StopRound();
+    } else if(Prev_PlayerCount >= C_MinimalPlayerCount && Players.count < C_MinimalPlayerCount) {
+        // If it's not enough players now, restart round and display message!
+        MB_StopRound();
+    }
+
     Prev_PlayerCount      = Players.count;
     Net_PlayerCount       = Prev_PlayerCount;
 
@@ -471,32 +484,48 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
 if(EndTime > -1 && EndTime <= Now) {
     if(!InfectionStarted) {
         // Begin infection round
-        FirstInfectedId = GetFirstInfected();
-        if(Players.existskey(FirstInfectedId)) {
-            declare FirstInfected <=> Players[FirstInfectedId];
+        InfectionStarted = True;
 
-            Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
-            Message::SendBigMessage(FirstInfected, "$360First Infected!", 4000, 1);
-            foreach(Survivor in AllPlayers) {
-                if(IsInfected(Survivor))
-                    continue;
+        if(S_TimeLimit > 0) {
+            EndTime = Now + S_TimeLimit;
+        } else {
+            EndTime = -1;
+        }
 
-                Message::SendBigMessage(Survivor, FirstInfected.Name ^ "$z$s$360 is the first infected!", 4000, 1);
-            }
+        if(Players.count >= C_MinimalPlayerCount) {
+            FirstInfectedId = GetFirstInfected();
+            if(Players.existskey(FirstInfectedId)) {
+                declare FirstInfected <=> Players[FirstInfectedId];
 
-            InfectionStarted = True;
-            if(S_TimeLimit > 0) {
-                EndTime = Now + S_TimeLimit;
+                OnInfect(FirstInfected, Null);
+
+                Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
+                Message::SendBigMessage(FirstInfected, "$360First Infected!", 4000, 1);
+                foreach(Survivor in AllPlayers) {
+                    if(IsInfected(Survivor))
+                        continue;
+
+                    Message::SendBigMessage(Survivor, FirstInfected.Name ^ "$z$s$360 is the first infected!", 4000, 1);
+                }
             } else {
-                EndTime = -1;
+                // This must not happen
+                log("First infected left immediately, this must not happen!");
+                MB_StopRound();
             }
         } else {
-            // This must not happen
-            log("First infected left immediately, this must not happen!");
-            MB_StopRound();
+            // Not enough players
+            UIManager.UIAll.BigMessage    = "$f92Waiting for Players";
+            UIManager.UIAll.StatusMessage = TL::Compose("At least $f00%1 $fffplayers are needed!", TL::ToText(C_MinimalPlayerCount));
         }
     } else {
         // End infection round
+        MB_StopRound();
+    }
+}
+
+if((InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
+    // Don't end the round if not enough players
+    if(Players.count >= C_MinimalPlayerCount) {
         MB_StopRound();
     }
 }
@@ -557,10 +586,6 @@ foreach(Event in PendingEvents) {
         default:
             PassOn(Event);
     }
-}
-
-if((InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
-    MB_StopRound();
 }
 
 ***
@@ -653,8 +678,7 @@ foreach (Player in Players)
 }
 
 foreach(Player in AllPlayers) {
-    Layers::Detach("Infection", Player.Id);
-    Layers::Detach("InfSpectator", Player.Id);
+    Layers::Detach(C_MainManialinkLayer, Player.Id);
 }
 
 if (MaxScore == 0)
@@ -758,7 +782,7 @@ Real SigmoidProbability(Real _X, Real _Max) {
                    );
 }
 
-CSmPlayer GetFirstInfected() {
+Ident GetFirstInfected() {
     declare Integer IMaxPoints = -1;
     declare Real    RMaxPoints = -1.0;
     declare Real    SumProb    = 0.0;
@@ -788,140 +812,12 @@ CSmPlayer GetFirstInfected() {
         declare Real ProbFirstInf for Player = 0.0;
         RandomNum -= ProbFirstInf;
         if(RandomNum <= 0.0) {
-            return Player;
+            return Player.Id;
         }
     }
 
     log("this must not happen! No random player was chosen! Choosing first one...");
-    return Players[0];
-}
-
-Text UpdateRoundML()
-{
-    return """
-        <label style="TextRaceChrono" posn="119 -74" valign="bottom" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{G_InfectedPlayerCount}}}" id="Infs"/>
-        <label posn="120 -72" valign="bottom" text="/{{{Players.count}}} infected" id="Players" />
-        <label style="TextTitle1" posn="0 20" halign="center" opacity="0.0" textcolor="f00" id="IdleLabel">$sYou are considered inactive. Please move in order to not get kicked!</label>
-        <label style="TextRaceChrono" posn="0 15" halign="center" visible="false" id="IdleTime" />
-        <frame id="FrmInfOnly">
-            <frame id="FrmSurvNear">
-                <gauge posn="-21 -87" ratio="0.5" clan="2" sizen="53 8" rot="180" id="SurvNear" />
-                <quad posn="-27 -76 10" sizen="14 14" style="UiSMSpectatorScoreBig" substyle="PlayerIconBg" />
-                <quad posn="-26 -77 11" sizen="12 12" image="file:///Media/Manialinks/ShootMania/Common/MainPlayer.dds" id="QuadSurvNear" />
-            </frame>
-            <quad posn="-0.3 0.3 0" sizen="0.6 0.6" bgcolor="fff" />
-        </frame>
-        <script>
-        <!--
-        {{{Manialink::Includes(["TextLib" => "TL", "MathLib" => "ML"])}}}
-
-        {{{Manialink::Animations(["EaseInOutQuad"])}}}
-
-        main() {
-            declare netread Net_InfectedCount   for Teams[0] = 0;
-            declare netread Net_PlayerCount     for Teams[0] = 0;
-            declare netread Net_Infected        for InputPlayer = False;
-            declare netread Net_NearestSurvivor for InputPlayer = 0.0;
-            declare SurvNear = 0.0;
-
-            declare LblIdle      = (Page.GetFirstChild("IdleLabel")    as CMlLabel);
-            declare LblIdleTime  = (Page.GetFirstChild("IdleTime")     as CMlLabel);
-            declare LblInfs      = (Page.GetFirstChild("Infs")         as CMlLabel);
-            declare LblPlayers   = (Page.GetFirstChild("Players")      as CMlLabel);
-            declare FrmSurvNear  = (Page.GetFirstChild("FrmSurvNear")  as CMlFrame);
-            declare FrmInfOnly   = (Page.GetFirstChild("FrmInfOnly")   as CMlFrame);
-            declare QuadSurvNear = (Page.GetFirstChild("QuadSurvNear") as CMlQuad);
-
-            QuadSurvNear.ModulateColor = <0., 1., 0.>;
-
-            while (True) {
-                yield;
-                LibManialink_AnimLoop();
-                LblInfs.Value = TL::ToText(Net_InfectedCount);
-                LblPlayers.Value = TL::ToText(Net_PlayerCount);
-                FrmInfOnly.Visible = Net_Infected;
-                if (Net_NearestSurvivor != SurvNear) {
-                    SurvNear = Net_NearestSurvivor;
-                    if (Net_NearestSurvivor >= 0. && Net_NearestSurvivor <= 1.)
-                    {
-                        declare X = 0.5;
-                        X += Net_NearestSurvivor / 2.;
-                        LibManialink_Anim("<quad id=\"QuadSurvNear\" colorize=\"" ^ TL::ColorToText(<X, X, X>) ^ "\" />", 200, "EaseInOutQuad");
-                        LibManialink_Anim("<gauge id=\"SurvNear\" ratio=\"" ^ Net_NearestSurvivor ^ "\" />", 200, "EaseInOutQuad");
-                    }
-                    else
-                    {
-                        LibManialink_Anim("<quad id=\"QuadSurvNear\" colorize=\"777\" />", 200, "EaseInOutQuad");
-                        LibManialink_Anim("<gauge id=\"SurvNear\" ratio=\"0.0\" />", 200, "EaseInOutQuad");
-                    }
-                }
-
-                if (InputPlayer.IdleDuration >= {{{C_IdleSpec * 0.8}}})
-                {
-                    LblIdle.Opacity = 0.5 + 0.5 * ML::Sin(Now / 200.);
-                    LblIdleTime.Visible = True;
-                    LblIdleTime.Value = TL::TimeToText({{{C_IdleSpec}}} - InputPlayer.IdleDuration);
-                }
-                else
-                {
-                    LblIdle.Opacity = 0.0;
-                    LblIdleTime.Visible = False;
-                }
-
-                ClientUI.OverlayHideCrosshair = False;
-
-                if (InputPlayer.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned)
-                {
-                    FrmInfOnly.Visible = True;
-                }
-            }
-        }
-        -->
-        </script>""";
-}
-
-Text UpdateSpecML()
-{
-    declare ML = """
-        <label style="TextRaceChrono" posn="119 -74" valign="bottom" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{G_InfectedPlayerCount}}}" id="Infs"/>
-        <label posn="120 -72" valign="bottom" text="/{{{Players.count}}} infected" id="Players" />
-""";
-        /*
-        for (I, 0, 9)
-        {
-            ML ^= """
-        <frame posn="160 {{{70-6*I}}}" id="Frm_Survivor_{{{I}}}">
-            <quad halign="right" sizen="40 6" bgcolor="{{{TL::ColorToText(C_SurvivorColor)}}}{{{7 - (I%2) * 3}}}" />
-        </frame>
-        <frame posn="-160 {{{70-6*I}}}" id="Frm_Infected_{{{I}}}">
-            <quad sizen="40 6" bgcolor="{{{TL::ColorToText(C_InfectedColor)}}}{{{7 - (I%2) * 3}}}"  />
-        </frame>
-            """;
-        }
-        */
-        ML ^= """
-        <script>
-        <!--
-        main()
-        {
-            declare netread InfCount for Teams[0] = 0;
-            declare netread PlayerCount for Teams[0] = 0;
-
-            declare LblInfs    = (Page.GetFirstChild("Infs")    as CMlLabel);
-            declare LblPlayers = (Page.GetFirstChild("Players") as CMlLabel);
-
-            while (True)
-            {
-                ClientUI.OverlayHideCrosshair = False;
-                LblInfs.Value = "" ^ InfCount;
-                LblPlayers.Value = "/" ^ PlayerCount ^ " infected";
-                yield;
-            }
-        }
-        -->
-        </script>
-""";
-    return ML;
+    return Players[0].Id;
 }
 
 CSmMapPlayerSpawn GetRandomSurvivorSpawn() {
@@ -1415,15 +1311,15 @@ Boolean SetupGateConditions(CSmMapLandmark _Gate) {
                 continue;
             }
             switch(Split[0]) {
-                case C_CondGateCountSource_TxtPlayers   : CCountSource = C_Condition_Count_Players;
-                case C_CondGateCountSource_TxtSurvivors : CCountSource = C_Condition_Count_Survivors;
-                case C_CondGateCountSource_TxtInfected  : CCountSource = C_Condition_Count_Infected;
+                case C_CondGateCountSource_TxtPlayers   : CCountSource = C_CondGateCountSource_Players;
+                case C_CondGateCountSource_TxtSurvivors : CCountSource = C_CondGateCountSource_Survivors;
+                case C_CondGateCountSource_TxtInfected  : CCountSource = C_CondGateCountSource_Infected;
             }
             if(CCountSource == -1) {
                 log(C_CondGate_TxtPrefix ^ "Invalid count source `" ^ Split[0] ^ "` in conditional gate: " ^ _Gate.Tag);
                 continue;
             }
-            if(!UpdateAlways && (CCountSource == C_CondGateCountSource_Survivors || CCountSource == C_Condition_Count_Infected)) {
+            if(!UpdateAlways && (CCountSource == C_CondGateCountSource_Survivors || CCountSource == C_CondGateCountSource_Infected)) {
                 log(C_CondGate_TxtPrefix ^ "Warning condition dependednt on count source `" ^ Split[0] ^ "` makes no sense if updating only on round start!");
             }
             CValue = TL::ToInteger(Split[1]);
@@ -1434,7 +1330,7 @@ Boolean SetupGateConditions(CSmMapLandmark _Gate) {
             Conditions.add([CCountSource, CComparison, CValue, C_CondGateChain_AND]);
         }
         if(Conditions.count > 0) {
-            Conditions[Conditions.count - 1][C_CondGateChain] = C_Condition_Chain_OR;
+            Conditions[Conditions.count - 1][C_CondGateChain] = C_CondGateChain_OR;
         }
     }
 
@@ -1511,5 +1407,78 @@ Void UpdateGateStatus(CSmMapLandmark _Gate) {
     }
     Gauge.Captured = !Open;
     Gate.ManualClosed = !Open;
+}
+
+Text GenerateManialink() {
+    return """
+        <label style="TextRaceChrono" posn="120 -69" valign="center" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{G_InfectedPlayerCount}}}" id="Infected"/>
+        <label style="TextRaceChrono" posn="121 -72" valign="center" halign="center" textcolor="fff" text="/" />
+        <label style="TextRaceChrono" posn="122 -75" valign="center" halign="left" textcolor="fff" text="{{{Players.count}}}" id="Players"/>
+        <label posn="128 -76" valign="center" halign="left" textcolor="fff" text="infected" />
+
+        <label style="TextTitle1" posn="0 20" halign="center" visible="false" textcolor="f00" id="Idle_Text">$sYou are considered inactive. Please move in order to not get kicked!</label>
+        <label style="TextRaceChrono" posn="0 15" halign="center" visible="false" id="Idle_Time" />
+
+        <frame id="NearestSurvivorFrame">
+            <frame>
+                <gauge posn="-21 -87" ratio="0.5" clan="{{{C_InfectedClanNum}}}" sizen="53 8" rot="180" id="NearestSurvivor" />
+                <quad posn="-27 -76 10" sizen="14 14" style="UiSMSpectatorScoreBig" substyle="PlayerIconBg" />
+                <quad posn="-26 -77 11" sizen="12 12" image="file:///Media/Manialinks/ShootMania/Common/MainPlayer.dds" id="SurvivorImage" />
+            </frame>
+            <quad posn="-0.3 0.3 0" sizen="0.6 0.6" bgcolor="fff" />
+        </frame>
+        <script>
+        <!--
+        {{{Manialink::Includes(["TextLib" => "TL", "MathLib" => "ML"])}}}
+        {{{Manialink::Animations(["EaseInOutQuad"])}}}
+        main() {
+            declare netread Net_InfectedCount   for Teams[0] = 0;
+            declare netread Net_PlayerCount     for Teams[0] = 0;
+            declare netread Net_Infected        for InputPlayer = False;
+            declare netread Net_NearestSurvivor for InputPlayer = 0.0;
+            declare NearestSurvivor = 0.0;
+
+            declare Label_Infected        = (Page.GetFirstChild("Infected")             as CMlLabel);
+            declare Label_Players         = (Page.GetFirstChild("Players")              as CMlLabel);
+            declare Label_Idle_Text       = (Page.GetFirstChild("Idle_Text")            as CMlLabel);
+            declare Label_Idle_Time       = (Page.GetFirstChild("Idle_Time")            as CMlLabel);
+            declare Frame_NearestSurvivor = (Page.GetFirstChild("NearestSurvivorFrame") as CMlFrame);
+
+            while(True) {
+                yield;
+
+                Label_Infected.Value = TL::ToText(Net_InfectedCount);
+                Label_Players.Value  = TL::ToText(Net_PlayerCount);
+
+                Frame_NearestSurvivor.Visible = Net_Infected && !IsSpectatorMode;
+                if(Frame_NearestSurvivor.Visible) {
+                    LibManialink_AnimLoop();
+                    if(Net_NearestSurvivor != NearestSurvivor) {
+                        NearestSurvivor = Net_NearestSurvivor;
+
+                        if(NearestSurvivor < 0.0)
+                            NearestSurvivor = 0.0;
+                        if(NearestSurvivor > 1.0)
+                            NearestSurvivor = 1.0;
+
+                        declare Intensity = 0.5 + NearestSurvivor / 2.0;
+                        LibManialink_Anim("<gauge id=\"NearestSurvivor\" ratio=\"" ^ Net_NearestSurvivor ^ "\" />", 200, "EaseInOutQuad");
+                        LibManialink_Anim("<quad id=\"SurvivorImage\" colorize=\"" ^ TL::ColorToText(<0.0, Intensity, 0.0>) ^ "\" />", 200, "EaseInOutQuad");
+                    }
+                }
+
+                if(!IsSpectatorMode && InputPlayer.IdleDuration >= {{{C_IdleSpec * 0.8}}}) {
+                    Label_Idle_Text.Opacity = 0.5 + 0.5 * ML::Sin(Now / 200.);
+                    Label_Idle_Time.Value   = TL::TimeToText({{{C_IdleSpec}}} - InputPlayer.IdleDuration);
+                    Label_Idle_Text.Visible = True;
+                    Label_Idle_Time.Visible = True;
+                } else {
+                    Label_Idle_Text.Visible = False;
+                    Label_Idle_Time.Visible = False;
+                }
+            }
+        }
+        -->
+        </script>""";
 }
 
