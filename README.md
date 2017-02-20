@@ -42,7 +42,7 @@ Where
   ```
   Gate_R:C:P>3&P<10
   ```
-  This gate is updated only each round start (`R`), and it is closed by default (`C`), but if the player count was between 4 and 9 when the round began than the gate is opened (`P>3&P<10`)
+  This gate is updated only each round start (`R`), and it is closed by default (`C`), but if the player count was between 4 and 9 when the round began then the gate is opened (`P>3&P<10`)
   
   ```
   Gate_A:O:I=1|P<5
