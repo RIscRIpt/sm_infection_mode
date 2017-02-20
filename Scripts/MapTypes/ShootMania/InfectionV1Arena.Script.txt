@@ -1,0 +1,80 @@
+#RequireContext CSmMapType
+
+#Const Version          "2017-02-22"
+#Const MapTypeVersion   1
+#Const ScriptName       "InfectionV1Arena.Script.txt"
+
+#Include "TextLib" as TL
+#Include "Libs/Nadeo/MapType.Script.txt" as MapType
+
+Void SetValid() {
+    ValidationStatus = CMapType::ValidationStatus::Validated;
+}
+
+Void SetInvalid(Text _Error) {
+    ValidationStatus = CMapType::ValidationStatus::NotValidable;
+    ValidabilityRequirementsMessage = _Error;
+}
+
+Void UpdateValidability() {
+    declare Integer TornadoCount   = 0;
+    declare Integer CommonSpawns   = 0;
+    declare Integer InfectedSpawns = 0;
+    declare Integer SurvivorSpawns = 0;
+
+    foreach(Anchor in AnchorData) {
+        declare Tags = TL::Split("_", Anchor.Tag);
+        switch(Tags[0]) {
+            case "Spawn":
+            {
+                if(Tags.count == 2) {
+                    switch(Tags[1]) {
+                        case "Infected": InfectedSpawns += 1;
+                        case "Survivor": SurvivorSpawns += 1;
+                        default:         CommonSpawns += 1;
+                    }
+                } else {
+                    CommonSpawns += 1;
+                }
+            }
+            case "Tornado":
+            {
+                TornadoCount += 1;
+            }
+            case "Gate":
+            {
+                // TODO: validate conditions
+            }
+        }
+    }
+
+    if(CommonSpawns == 0 && (InfectedSpawns == 0 || SurvivorSpawns == 0)) {
+        SetInvalid("Not enough spawns for infected or survivors!");
+        return;
+    }
+
+    if(TornadoCount > 1) {
+        SetInvalid("You can put only 1 tornado!");
+        return;
+    }
+
+    SetValid();
+}
+
+main() {
+    MapType::SetVersion(MapTypeVersion);
+
+    UpdateValidability();
+    while(True) {
+        yield;
+
+        ManialinkText = "";
+        foreach(Event in PendingEvents) {
+            switch(Event.Type) {
+                case CPluginEvent::Type::MapModified:
+                    UpdateValidability();
+            }
+        }
+    }
+}
+

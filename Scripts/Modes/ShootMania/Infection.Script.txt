@@ -1,26 +1,7 @@
-/*
- * Infection Gamemode for ShootMania Storm
- * Copyright © 2016 by mewin<mewin@mewin.de>
- * for more information contact me via email or visit my website (mewin.de)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Feel free to modify this file or copy parts of it for you own use.
- * Just make sure to follow the terms of the GPL or at least ask me
- * before you steal my code ;) .
- */
 #Extends "Modes/ShootMania/ModeBase.Script.txt"
+
+#Const Version    "2017-02-22"
+#Const ScriptName "InfectionV2"
 
 #Include "TextLib" as TL
 #Include "MathLib" as ML
@@ -35,84 +16,147 @@
 #Include "Libs/Nadeo/ShootMania/SpawnScreen.Script.txt" as SpawnScreen
 #Include "Libs/Nadeo/Manialink.Script.txt" as Manialink
 
-#Command Infect                         (Integer)   as "infect random players (count)"
+#Setting S_InfectionDistance                1.7         as "infection distance"
+#Setting S_InfectionScore                   4           as "infection score"
+#Setting S_InfectionArmorBonus              100         as "armor bonus for infection"
+#Setting S_PVP                              False       as "enable PvP for survivors"
+#Setting S_PursuitMode                      0           as "pursuit mode (0=off, 1=normal ammo, 2=inf ammo)"
+#Setting S_UseClans                         True        as "use teams (need map restart)"
+#Setting S_UseSameWallJump                  False       as "allow escalator jump (need round restart)"
+#Setting S_HitSurvivorScore                 0           as "hit survivor score (for PvP mode)"
+#Setting S_HitInfectedScore                 1           as "hit infected score"
+#Setting S_ScoreForSurv1Inf                 1           as "score for surviving single infection"
+#Setting S_TimeLimit                        300000      as "time limit for a round"
+#Setting S_ScoreLimit                       100         as "score limit for a match"
+#Setting S_RoundLimit                       0           as "round limit for a match"
+#Setting S_RespawnOnInfection               True        as "respawn on infection"
+#Setting S_InfectedShoot                    1           as "allow infected to shoot (0=off, 1=first, 2=all)"
+#Setting S_InfectedWAmmoGain                1.0         as "<hidden>"
+#Setting S_InfectedWLaserMax                0           as "<hidden>"
+#Setting S_InfectedWRocketMax               1           as "<hidden>"
+#Setting S_InfectedWNucleusMax              0           as "<hidden>"
+#Setting S_InfectedWArrowMax                0           as "<hidden>"
+#Setting S_PreparationTime                  10000       as "time till first infection"
+#Setting S_InfectNewPlayers                 True        as "infect new players"
+#Setting S_RewardInfectors                  0.5         as "rewarding infected `parent` cooef."
+#Setting S_SurvivorStamina                  1.0         as "survivor stamina (0.1-3.0)"
+#Setting S_SurvivorStaminaGain              0.7         as "survivor stamina gain (0.0-1.0,10)"
+#Setting S_InfectedStamina                  2.0         as "infected stamina (0.1-3.0)"
+#Setting S_InfectedStaminaGain              1.0         as "infected stamina gain (0.0-1.0,10)"
+#Setting S_SurvivorRespawnArmor             1           as "survivor respawn armor (1-10)"
+#Setting S_SurvivorMaxArmor                 1           as "survivor maximum armor (1-10)"
+#Setting S_InfectedRespawnArmor             2           as "infected respawn armor (1-10)"
+#Setting S_InfectedMaxArmor                 2           as "infected maximum armor (1-10)"
+#Setting S_RewardFirstInfected              0.5         as "<hidden>"
+#Setting S_SurvivorDetectorMaxDist          20.0        as "survivor detector max distance"
+#Setting S_RespawnDelay                     1000        as "respawn delay"
+#Setting S_CanLeaveMapFor                   3000        as "can leave map for (ms)"
 
-//Scores
-#Const      S_InfectionScore        4           //as "infection score"
-#Const      S_HitScore              1           //as "hit score"
-#Const      S_SurvivalScore         1           //as "survival score"
-#Const      S_FirstInfectedScore    0.5         //as "first infected score"
-//Limits
-#Setting    S_TimeLimit             300000      as "time limit"
-#Setting    S_ScoreLimit            100         as "score limit"
-#Setting    S_RoundLimit            20          as "round limit"
-//Rules
-#Const      S_RespawnOnInfection    True        //as "respawn on infection"
-#Const      S_FirstInfectedShoot    True        //as "allow first infected to shoot"
-#Const      S_InfectionTime         10000       //as "time till first infection"
-#Setting    S_HitSurvivors          False       as "allow hitting survivors"
-#Const      S_InfectNewPlayers      True        //as "infect players who joined later"
-#Const      S_SurvivorStamina       1.0         //as "survivor stamina (0.1-3.0)"
-#Const      S_SurvivorStaminaGain   0.7         //as "survivor stamina gain (0.0-1.0)"
-#Const      S_InfectedStamina       2.0         // as "infected stamina (0.1-3.0)"
-#Const      S_InfectedStaminaGain   1.0         //as "infected stamina gain (0.0-1.0)"
-#Const      S_InfectedArmor         2           //as "infected armor (1-10)"
-#Setting    S_Snowballing           True        as "enable snowballing"
+#Const   C_IdleSpec                         60000
 
-//Other constants
-#Const      S_MinPlayers            2           //as "minimum players"
-#Const      Version                 "2017-02-22"
+#Const   C_InfectOnRespawn                  True        //as "infect on respawn"
+#Const   C_InfectionTick                    30
+#Const   C_SurvivorColor                    <1.0, 0.0, 0.0>
+#Const   C_SurvivorHasShield                True
+#Const   C_SurvivorIsHighlighted            True
+#Const   C_SurvivorEnergyLevel              1.0
+#Const   C_InfectedColor                    <0.0, 0.5, 0.0>
+#Const   C_InfectedHasShield                True
+#Const   C_InfectedIsHighlighted            False
+#Const   C_InfectedEnergyLevel              1.0
+#Const   C_RoundPauseTime                   4000
+#Const   C_MatchPauseTime                   6000
 
-#Setting    S_SmellMaxDist          20.0        as "smell distance"
-#Const      C_IdleSpec              60000
-#Const      C_Survivor              "$f00Survivor"
-#Const      C_Infected              "$360Infected"
-#Const      C_FirstInfected         "$360First Infected"
-#Setting    S_InfectionDistance     1.7         as "infection distance"
-#Const      C_InfectionTick         30
-#Const      C_CountTick             500
-#Const      C_DefaultColor          <1., 0., 0.>
-#Const      C_InfectedColor         <0.2, .4, 0.>
-#Const      C_RoundPauseTime        4000
-#Const      C_MatchPauseTime        6000
-#Const      C_DbgBots               0
-#Const      C_DbgPlayers            0
+#Const   C_SurvivorTeamId                   0
+#Const   C_InfectedTeamId                   1
+#Const   C_SurvivorClanNum                  1
+#Const   C_InfectedClanNum                  2
 
-#Const      C_TxtRules              "Free for all. You spawn as a survivor, if you die you respawn infected. Infected players can't shoot, but can infect other players by touching them. The match ends when a player reaches the score limit or the round limit is reached."
-#Const      C_TxtRoundEnd           "A round ends either if no survivors are left or if the time limit is reached."
-#Const      Description             "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
+#Const   C_TxtUnkTime                       "--:--.--"
+#Const   C_TxtSurvivor                      "$f00Survivor"
+#Const   C_TxtInfected                      "$360Infected"
+#Const   C_TxtSpectator                     "$aaaSpectator"
+
+#Const   C_TopHits                          "Hits"
+#Const   C_TitleTopHits                     "Top Hits"
+#Const   C_TopInfections                    "Infs"
+#Const   C_TitleTopInfections               "Top Infections"
+#Const   C_TopSurivals                      "Srvs"
+#Const   C_TitleTopSurvivals                "Top Survivals"
+
+#Const   C_TxtRules                         "Free for all. You spawn as a survivor, if you die you respawn infected. Infected players can't shoot, but can infect other players by touching them. The match ends when a player reaches the score limit or the round limit is reached."
+#Const   C_TxtRoundEnd                      "A round ends either if no survivors are left or if the time limit is reached."
+#Const   Description                        "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
+
+#Const   C_TxtYouInfectedA                  "$0f0You infected $fff%1"
+#Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
+#Const   C_TxtAInfectedB                    "%1 $z$sinfected %2"
+
+#Const   C_TxtAllPlayersInfected            "All players are infected!"
+#Const   C_TxtTimeLimitReached              "Time limit reached!"
+#Const   C_TxtNPlayersSurvivied             "$f00%1 $fffplayer(s) survived!"
+#Const   C_TxtNoMoreInfected                "No more infected players!"
+
+#Const   C_TxtGetBackToBattleField          "Get back to the battlefield!"
+#Const   C_TxtYouWillBeInfectedInX          "You will be infected in $360%1"
+
+#Const   C_LastSurvivorMsgDuration          6000
+#Const   C_LastSurvivorMsgPriority          2
+
+#Const   C_StaminaMax                       3600
+
+#Const   C_CondGate_TxtPrefix               "[CondGates] "
+
+#Const   C_CondGateCountSource              0
+#Const   C_CondGateComparison               1
+#Const   C_CondGateValue                    2
+#Const   C_CondGateChain                    3
+
+#Const   C_CondGateCountSource_TxtPlayers         "P"
+#Const   C_CondGateCountSource_TxtSurvivors       "S"
+#Const   C_CondGateCountSource_TxtInfected        "I"
+
+#Const   C_CondGateCountSource_Players            0
+#Const   C_CondGateCountSource_Survivors          1
+#Const   C_CondGateCountSource_Infected           2
+
+#Const   C_CondGateComparison_LT            0
+#Const   C_CondGateComparison_EQ            1
+#Const   C_CondGateComparison_GT            2
+
+#Const   C_CondGateChain_AND                0
+#Const   C_CondGateChain_OR                 1
 
 /* -------------------------------------- */
-// Globales
+// Globals
 /* -------------------------------------- */
 
-declare CSmMapLandmark[][Integer] SpawnQueue;
-declare Ident RoundInfoLayerId;
-declare Integer NbPlayers;
-declare Integer NbInfected;
-declare Text FirstInfectedLogin;
+declare Ident   G_RoundInfoLayerId;
+declare Integer G_InfectedPlayerCount;
+
+declare CSmMapLandmark[] G_CondGates_Up_Always;
+declare CSmMapLandmark[] G_CondGates_Up_EachRound;
+
+declare CSmMapLandmark[] G_CommonSpawns;
+declare CSmMapLandmark[] G_SurvivorSpawns;
+declare CSmMapLandmark[] G_InfectedSpawns;
 
 ***InitServer***
 ***
-log ("Init Infection ...");
 UIManager.UILayerDestroyAll();
 UIManager.UIAll.AltMenuNoCustomScores = True;
 UIManager.UIAll.AltMenuNoDefaultScores = True;
-RoundInfoLayerId = UIManager.UILayerCreate().Id;
+G_RoundInfoLayerId = UIManager.UILayerCreate().Id;
 ***
 
 ***StartServer***
 ***
-/* -------------------------------------- */
-// Set mode options
-UseClans = False;
 UsePvPCollisions = False;
+
 SM::SetupDefaultVisibility();
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 
 Color::Load(); //?
-
-UpdateSpawns();
 
 /* -------------------------------------- */
 // Create the rules
@@ -138,19 +182,19 @@ declare Real TopXOffset = 65.;
 declare Integer PlayersNbPerTop = 14;
 declare Text TopBGImg = "file://Media/Manialinks/Shootmania/Common/topsBg.dds";
 Top::SetLayerType(CUILayer::EUILayerType::AltMenu);
-Top::Create("Hits", _("Top Hit"), PlayersNbPerTop, <TopXPosition, TopYPosition>);
+Top::Create(C_TopHits, C_TitleTopHits, PlayersNbPerTop, <TopXPosition, TopYPosition>);
 TopXPosition += TopXOffset;
-Top::Create("Infections", "Top Infections", PlayersNbPerTop, <TopXPosition, TopYPosition>);
+Top::Create(C_TopInfections, C_TitleTopInfections, PlayersNbPerTop, <TopXPosition, TopYPosition>);
 TopXPosition += TopXOffset;
-Top::Create("SurvivalScore", "Top Survival", PlayersNbPerTop, <TopXPosition, TopYPosition>);
+Top::Create(C_TopSurivals, C_TitleTopSurvivals, PlayersNbPerTop, <TopXPosition, TopYPosition>);
 Top::SetLayerType(CUILayer::EUILayerType::AltMenu);
 // Init scores table
 ScoresTable::Load();
 ScoresTable::SetTableWidth(190.);
 ScoresTable::SetColumnWidth("Custom1", 10.);
-ScoresTable::SetDefaultCustom1(C_Survivor);
+ScoresTable::SetDefaultCustom1(C_TxtSurvivor);
 ScoresTable::SetColumnWidth("Custom2", 7.);
-ScoresTable::SetDefaultCustom2("--:--.--");
+ScoresTable::SetDefaultCustom2(C_TxtUnkTime);
 ScoresTable::SetColumnName("Custom2", "Survival Time");
 ScoresTable::SetColumnWidth("Custom3", 8.);
 ScoresTable::SetDefaultCustom3("$3600$fff/$f000$fff/$ff00");
@@ -158,7 +202,7 @@ ScoresTable::SetColumnName("Custom3", "$360Inf$fff/$f00Hit$fff/$ff0Surv");
 ScoresTable::SetColumnWidth("RoundPoints", 5.);
 ScoresTable::SetColumnWidth("Points", 5.);
 ScoresTable::SetTableFormat(2, 7);
-ScoresTable::SetDefaultFooterStats("Version: " ^ Version ^ " Scorelimit: " ^ S_ScoreLimit);
+ScoresTable::SetDefaultFooterStats("Version: " ^ Version);
 ScoresTable::Build(True, False);
 //Init Tabs
 Tabs::Load();
@@ -175,217 +219,110 @@ declare Tmp = Layers::Create("Infection", UpdateRoundML());
 Tmp = Layers::Create("InfSpectator", UpdateSpecML());
 ***
 
-***InitMap***
-***
-declare CSmMapLandmark[Integer] SpawnList;
-***
-
 ***StartMap***
 ***
-declare netwrite InfCount for Teams[0] = 0;
-declare netwrite PlayerCount for Teams[0] = 0;
-UseClans = True;
-UseForcedClans = True;
-Teams[0].ColorPrimary = C_DefaultColor;
-Teams[1].ColorPrimary = C_InfectedColor;
+UseClans       = S_UseClans;
+UseForcedClans = S_UseClans;
 
-if (C_DbgPlayers >= 0)
-{
-    Users_SetNbFakeUsers(C_DbgPlayers, 0);
-}
-/* -------------------------------------- */
-// Init pole
+// Required for manialink clan colors
+Teams[C_SurvivorTeamId].ColorPrimary = C_SurvivorColor;
+Teams[C_InfectedTeamId].ColorPrimary = C_InfectedColor;
+
 UIManager.UIAll.MarkersXML = "";
 
-/* -------------------------------------- */
-// Init spawn
-SpawnList.clear();
-foreach (Spawn in MapLandmarks_PlayerSpawn)
-{
-    if (Spawn.Tag == "Spawn") SpawnList[Spawn.Order] <=> Spawn;
-}
-foreach (Pole in MapLandmarks_Gauge)
-{
-    if (Pole.Tag == "OffCenter")
-    {
-        declare metadata OffRadius for Map = -1.;
-        if (OffRadius > -1)
+G_InfectedPlayerCount = 0;
+G_InfectedSpawns.clear();
+G_SurvivorSpawns.clear();
+OffZoneRadius = -1.0;
+G_CondGates_Up_Always.clear();
+G_CondGates_Up_EachRound.clear();
+
+foreach(Landmark in MapLandmarks) {
+    declare Tags = TL::Split("_", Landmark.Tag);
+    switch(Tags[0]) {
+        case "Spawn":
         {
-            OffZoneCenterLandmarkId = Pole.Id;
-            OffZoneRadius = OffRadius;
+            SetupCustomSpawn(Landmark);
+        }
+        case "Tornado":
+        {
+            if(Tags.count == 2) {
+                OffZoneCenterLandmarkId = Landmark.Id;
+                OffZoneRadius = TL::ToReal(Tags[1]);
+            }
+        }
+        case "Gate":
+        {
+            if(SetupGateConditions(Landmark)) {
+                declare Boolean UpdateAlways for Landmark = False;
+                if(UpdateAlways)
+                    G_CondGates_Up_Always.add(Landmark);
+                else
+                    G_CondGates_Up_EachRound.add(Landmark);
+                SetupConditionalGate(Landmark);
+            }
         }
     }
 }
-UpdateSpawns();
-/* -------------------------------------- */
-// Misc init
+
 ScoresTable::StartMatch();
 Scores::MatchBegin();
-ClanScores[1]       = 0;
-ClanScores[2]       = 0;
 
 Top::ResetAll();
-foreach (Player in Players)
-{
+
+foreach(Player in Players) {
     declare Integer Match_Infections for Player;
-    declare Integer Match_Hits for Player;
-    declare Integer Match_SurvivalScore for Player;
+    declare Integer Match_Hits       for Player;
+    declare Integer Match_Survivals  for Player;
 
     Match_Infections = 0;
-    Match_Hits = 0;
-    Match_SurvivalScore = 0;
+    Match_Hits       = 0;
+    Match_Survivals  = 0;
 }
 ***
 
 ***InitRound***
 ***
-declare LastInfectionTick = 0;
-declare LastCountTick = 0;
-declare InfectionStarted = False;
-declare FirstInfected = NullId;
-declare LastScoreLimit = S_ScoreLimit;
-ScoresTable::SetDefaultFooterStats("Version: " ^ Version ^ " Scorelimit: " ^ S_ScoreLimit);
+declare PrevInfectionTickTime    = 0;
+declare Boolean InfectionStarted = False;
+declare Ident FirstInfectedId    = NullId;
+
+UseSameWallJump = S_UseSameWallJump;
+UsePvPWeapons = (S_PursuitMode == 0);
+
 MB_UseSectionRound = True;
 ***
 
 
 ***StartRound***
 ***
-log("Round " ^ MB_SectionRoundNb);
 Scores::RoundBegin();
 UIManager.UIAll.UISequence      = CUIConfig::EUISequence::Playing;
 UIManager.UIAll.BigMessageSound = CUIConfig::EUISound::Default;
 
-foreach (Player in AllPlayers)
-{
-    declare Integer Infections for Player;
-    declare Integer Hits for Player;
-    declare Integer SurvivalScore for Player;
-    Infections = 0;
-    Hits = 0;
-    SurvivalScore = 0;
-    ScoresTable::SetCustom1(Player, C_Survivor);
-    ScoresTable::SetCustom2(Player, "--:--.--");
-    ScoresTable::SetFooterStats(Player, "Version: " ^ Version ^ " Scorelimit: " ^ S_ScoreLimit);
-    UpdateScoresTable(Player);
-}
-ScoresTable::Build(True, False);
+G_InfectedPlayerCount = 0;
 
-if (C_DbgBots > 0)
-{
-    for (I, 1, C_DbgBots)
-    {
-        declare Bot = CreateBotPlayer(NullId, 0);
-        SpawnBotPlayer(Bot, 0, 200, FindSpawn(0).PlayerSpawn, Now + 1000);
-        declare Boolean Spawned for Bot;
-        Spawned = True;
-    }
+foreach(Player in AllPlayers) {
+    declare Integer Round_Infections for Player;
+    declare Integer Round_Hits       for Player;
+    declare Integer Round_Survivals  for Player;
+
+    Round_Infections = 0;
+    Round_Hits       = 0;
+    Round_Survivals  = 0;
 }
 
-if (PlayerCount() < S_MinPlayers)
-{
-    ModeStatusMessage = "Waiting for more players...";
-    UseClans = False;
-    UIManager.UIAll.BigMessage      = "$f92Waiting for Players";
-    UIManager.UIAll.StatusMessage   = TL::Compose("At least $f00%1 $fffplayers are needed.", TL::ToText(S_MinPlayers));
-    StartTime = Now + 1000;
-    EndTime = -1;
-
-    while (PlayerCount() < S_MinPlayers && !MatchEndRequested && !ServerShutdownRequested)
-    {
-        foreach (Player in Players)
-        {
-            if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned)
-            {
-                Player.ArmorReplenishGain = 0;
-                Player.ForceColor = <-1., -1., -1.>;
-                Player.ArmorMax = 200;
-                SM::SpawnPlayer(Player, 0, FindSpawn(0).PlayerSpawn, Now + 1000);
-                SetPlayerAmmoMax(Player, CSmMode::EWeapon::Rocket, 4);
-                SetPlayerAmmoMax(Player, CSmMode::EWeapon::Nucleus, 2);
-                SetPlayerAmmo(Player, CSmMode::EWeapon::Rocket, 2);
-                SetPlayerWeapon(Player, CSmMode::EWeapon::Rocket, True); //enable weapon switching (laser, nucleus, ...)
-            }
-        }
-
-        foreach (Player in BotPlayers)
-        {
-            if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned)
-            {
-                Player.ForceColor = <-1., -1., -1.>;
-                SM::SpawnPlayer(Player, 0, FindSpawn(0).PlayerSpawn, Now + 1000);
-            }
-        }
-
-        foreach (Event in PendingEvents)
-        {
-            if (Event.Type == CSmModeEvent::EType::OnHit)
-            {
-                if (Event.Victim == Event.Shooter)
-                {
-                    Discard(Event);
-                }
-                else
-                {
-                    PassOn(Event);
-                }
-            }
-            else
-            {
-                PassOn(Event);
-            }
-        }
-
-        // ---------------------------------- //
-        // Create a custom event when a player is added to the Players array
-        foreach (Player in Players) {
-            declare MB_NewPlayer for Player = True;
-            declare MB_NewSpectator for Player = True;
-
-            if (MB_NewPlayer) {
-                if (MB_UseLogging) MB_Log("New player > Login: "^Player.Login);
-                MB_NewPlayer = False;
-                MB_NewSpectator = True;
-                +++OnNewPlayerWA+++
-            }
-        }
-        // ---------------------------------- //
-        // Create a custom event when a spectator is added to the Spectators array
-        foreach (Spectator in Spectators) {
-            declare MB_NewPlayer for Spectator = True;
-            declare MB_NewSpectator for Spectator = True;
-
-            if (MB_NewSpectator) {
-                if (MB_UseLogging) MB_Log("New spectator > Login: "^Spectator.Login);
-                MB_NewPlayer = True;
-                MB_NewSpectator = False;
-                +++OnNewSpectator+++
-            }
-        }
-        yield;
-    }
-
-    SM::UnspawnAllPlayers();
-    UIManager.UIAll.BigMessage      = "";
-    UIManager.UIAll.StatusMessage   = "";
-    UseClans = True;
-    UseForcedClans = True;
-}
-
-foreach (Player in AllPlayers)
-{
-    declare Boolean Infected for Player;
-    declare Boolean Spawned for Player;
-
-    Infected = False;
-    Spawned = False;
-}
-UpdateMSM();
+UpdateModeStatusMessage();
 
 StartTime = Now + 1000;
-EndTime = Now + 1000 + S_InfectionTime;
+EndTime   = Now + 1000 + S_PreparationTime;
 
-UIManager.UIAll.UILayers.add(UIManager.UILayers[RoundInfoLayerId]);
+UIManager.UIAll.UILayers.add(UIManager.UILayers[G_RoundInfoLayerId]);
+
+// Update conditional gates
+foreach(Gate in G_CondGates_Up_EachRound) {
+    UpdateGateStatus(Gate);
+}
 ***
 
 
@@ -394,569 +331,301 @@ UIManager.UIAll.UILayers.add(UIManager.UILayers[RoundInfoLayerId]);
 MB_UseSectionTurn = False;
 ***
 
-***OnNewPlayerWA***
-***
-ScoresTable::RestoreCustomScores(Player);
-declare UI <=> UIManager.GetUI(Player);
-Tabs::UseTabs(UI, "ScoresTab");
-Tabs::AlwaysShowScore(UI, True);
-ScoresTable::Build(True, False);
-***
-
 ***OnNewPlayer***
 ***
+declare netwrite Boolean Net_Infected     for Player;
+declare netwrite Real Net_NearestSurvivor for Player;
+
+declare Ident InfectorId  for Player;
+declare Boolean Infected  for Player;
+declare Integer SpawnTime for Player;
+
+if(InfectionStarted && S_InfectNewPlayers) {
+    Infected = True;
+    ScoresTable::SetCustom1(Player, C_TxtInfected);
+} else {
+    Infected = False;
+    ScoresTable::SetCustom1(Player, C_TxtSurvivor);
+}
+
+SpawnTime = -1;
+if(Infected) {
+    G_InfectedPlayerCount += 1;
+}
+InfectorId = NullId;
+Net_Infected = Infected;
+Net_NearestSurvivor = 0.0;
+
+ScoresTable::SetCustom2(Player, C_TxtUnkTime);
+UpdateScoresTable(Player);
+
 ScoresTable::RestoreCustomScores(Player);
 declare UI <=> UIManager.GetUI(Player);
 Tabs::UseTabs(UI, "ScoresTab");
 Tabs::AlwaysShowScore(UI, True);
-SetPlayerClan(Player, 1);
-ScoresTable::Build(True, False);
+
+Layers::Attach("Infection", Player.Id);
+Layers::Detach("InfSpectator", Player.Id);
 ***
 
 ***OnNewSpectator***
 ***
-declare Integer SpawnTime for Spectator;
+declare Boolean Infected for Spectator = False;
+
+if(Infected) {
+    G_InfectedPlayerCount -= 1;
+}
+
+ScoresTable::SetCustom1(Spectator, C_TxtSpectator);
+ScoresTable::SetCustom2(Spectator, C_TxtUnkTime);
+UpdateScoresTable(Spectator);
+
 ScoresTable::RestoreCustomScores(Spectator);
 declare UI <=> UIManager.GetUI(Spectator);
-Tabs::UseTabs(UI, "ScoresTab");
+Tabs::UseTabs(UI, "SconesTab");
 Tabs::AlwaysShowScore(UI, True);
-if (UI != Null) {
+
+if(UI != Null) {
     UI.SpectatorForcedClan      = 0;
     UI.SpectatorForceCameraType = 15;
 }
-if (Spectator.Score != Null) {
-    declare WaitForRespawn  for Spectator.Score = False;
-    WaitForRespawn = False;
-}
-SpawnTime = -1;
-***
 
-***FirstInfection***
-***
-declare Victim = Player;
-Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
-foreach (_Player, AllPlayers)
-{
-    if (_Player == Player)
-    {
-        Message::SendBigMessage(Player, "$360First Infected!", 4000, 1);
-    }
-    else
-    {
-        Message::SendBigMessage(_Player, Player.Name ^ "$z$s$360 is the first infected.", 4000, 1);
-    }
-}
-+++OnInfect+++
-***
-
-***SpawnPlayer***
-***
-declare Infected for Player = False;
-declare Spawned for Player = False;
-declare Integer SpawnTime for Player;
-if (((InfectionStarted && S_InfectNewPlayers) || Spawned) && !Infected)
-{
-    declare Victim = Player;
-    +++OnInfect+++
-    Infect(Player, Null);
-}
-SpawnTime = Now;
-if (!Infected)
-{
-    Player.ArmorMax = 200;
-    SM::SpawnPlayer(Player, 1, FindSpawn(0).PlayerSpawn, Now + 1000);
-    SetPlayerAmmoMax(Player, CSmMode::EWeapon::Nucleus, 1);
-    SetPlayerAmmoMax(Player, CSmMode::EWeapon::Rocket, 4);
-    SetPlayerAmmo(Player, CSmMode::EWeapon::Rocket, 2);
-    SetPlayerWeapon(Player, CSmMode::EWeapon::Rocket, True); //enable weapon switching (laser, nucleus, ...)
-    Player.ForceColor = C_DefaultColor;
-    Player.EnergyLevel = 1.;
-    if (S_SurvivorStamina >= 0.1 && S_SurvivorStamina <= 3.0)
-    {
-        Player.StaminaMax = S_SurvivorStamina;
-    }
-    else
-    {
-        Player.StaminaMax = 1.;
-    }
-    if (S_SurvivorStaminaGain >= 0.0 && S_SurvivorStaminaGain <= 1.0)
-    {
-        Player.StaminaGain = S_SurvivorStaminaGain;
-    }
-    else
-    {
-        Player.StaminaGain = 1.0;
-    }
-    //Player.ForceModelId = NullId;
-}
-else
-{
-    SetPlayerClan(Player, 2);
-    SetPlayerWeapon(Player, CSmMode::EWeapon::Rocket, False);
-    if (S_InfectedArmor >= 1 && S_InfectedArmor <= 10)
-    {
-        Player.ArmorMax = S_InfectedArmor * 100;
-    }
-    SM::SpawnPlayer(Player, 2, FindSpawn(0).PlayerSpawn, Now + 1000);
-    if (InfectedCount() > 1)
-    {
-        SetPlayerAmmoMax(Player, CSmMode::EWeapon::Rocket, 0);
-    }
-    Player.ForceColor = C_InfectedColor;
-    Player.EnergyLevel = 0.05;
-    if (S_InfectedStamina >= 0.1 && S_InfectedStamina <= 3.0)
-    {
-        Player.StaminaMax = S_InfectedStamina;
-    }
-    else
-    {
-        Player.StaminaMax = 1.;
-    }
-    if (S_InfectedStaminaGain >= 0.0 && S_InfectedStaminaGain <= 1.0)
-    {
-        Player.StaminaGain = S_InfectedStaminaGain;
-    }
-    else
-    {
-        Player.StaminaGain = 1.0;
-    }
-}
-declare Tmp = Layers::Attach("Infection", Player.Id);
-Tmp = Layers::Detach("InfSpectator", Player.Id);
-Spawned = True;
-***
-
-***OnTouch***
-***
-if (Victim != Null)
-{
-    declare Infections for Player = 0;
-    if (Player.Score != Null)
-    {
-        declare Match_Infections for Player = 0;
-        Match_Infections += 1;
-        Top::SetRecord(Player, "Infections", TL::ToText(Match_Infections), -Match_Infections);
-    }
-    if (S_RespawnOnInfection)
-    {
-        UnspawnPlayer(Victim);
-    }
-    Infections += 1;
-    UpdateScoresTable(Player);
-    Scores::AddPoints(Player, S_InfectionScore);
-    Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s.", Player.Name, Victim.Name), 4000, 1);
-    Message::SendBigMessage(Victim, "$360Infected!", 4000, 1);
-    foreach (_Player in AllPlayers)
-    {
-        if (_Player.Score != Null)
-        {
-            declare Text Message;
-            if (_Player == Player)
-            {
-                Message = TL::Compose("$0f0You infected $fff%2", Player.Name, Victim.Name);
-            }
-            else if (_Player == Victim)
-            {
-                Message = TL::Compose("%1 $z$s$0f0infected you", Player.Name, Victim.Name);
-            }
-            else
-            {
-                Message = TL::Compose("%1 $z$sinfected %2", Player.Name, Victim.Name);
-            }
-            UIManager.GetUI(_Player).SendNotice(Message, CUIConfig::ENoticeLevel::PlayerInfo, Player.User, CUIConfig::EAvatarVariant::Default, CUIConfig::EUISound::Silence, 0);
-        }
-    }
-+++OnInfect+++
-}
-***
-
-***OnHit***
-***
-declare Hits for Event.Shooter = 0;
-if (Event.Shooter.Score != Null)
-{
-    declare Match_Hits for Event.Shooter = 0;
-    Match_Hits += 1;
-    Top::SetRecord(Event.Shooter, "Hits", TL::ToText(Match_Hits), -Match_Hits);
-}
-Hits += 1;
-UpdateScoresTable(Event.Shooter);
-***
-
-***OnInfect***
-***
-declare Ident Infecter for Victim;
-if (Player == Victim)
-{
-    ScoresTable::SetFooterStats(Victim, "Infected by: - Scorelimit: " ^ S_ScoreLimit);
-    Infecter = NullId;
-}
-else
-{
-    if (Player.Armor < Player.ArmorMax)
-    {
-        Player.Armor += 100;
-    }
-    ScoresTable::SetFooterStats(Victim, "Infected by: " ^ Player.Name ^ "$z Scorelimit: " ^ S_ScoreLimit);
-    Infecter = Player.Id;
-
-    if (S_Snowballing)
-    {
-        DoSnowballing(Player, S_InfectionScore / 2);
-    }
-}
-if (InfectedCount() == PlayerCount() - 1)
-{
-    foreach (Player, AllPlayers)
-    {
-        if (!Spectators.exists(Player) && !IsInfected(Player))
-        {
-            Message::SendBigMessage(TL::Compose("%1$z$s is the last survivor!", Player.Name), 6000, 2);
-        }
-    }
-}
-XmlRpc.SendCallbackArray("Inf_Infection", [Player.Login, Victim.Login]);
+Layers::Detach("Infection", Spectator.Id);
+Layers::Attach("InfSpectator", Spectator.Id);
 ***
 
 ***PlayLoop***
 ***
-Message::Loop();
-if (LastScoreLimit != S_ScoreLimit)
-{
-    ScoresTable::SetDefaultFooterStats("Version: " ^ Version ^ " Scorelimit: " ^ S_ScoreLimit);
-    ScoresTable::Build(True, False);
-    LastScoreLimit = S_ScoreLimit;
-}
-if (LastInfectionTick + C_InfectionTick < Now)
-{   //use this for everything :3
-    Top::Loop();
-    KillLeavers();
-    LastInfectionTick = Now;
+declare netwrite Integer Net_PlayerCount   for Teams[0];
+declare netwrite Integer Net_InfectedCount for Teams[0];
 
-    foreach (Player in AllPlayers)
-    {
-        if (Player.IsBot)
-        {
+declare Integer Prev_PlayerCount for This         = -1;
+declare Integer Prev_InfectedPlayerCount for This = -1;
+
+// Cannot be done more efficiently as there's no event "player left"
+if(Prev_PlayerCount != Players.count) {
+    Prev_PlayerCount      = Players.count;
+    Net_PlayerCount       = Prev_PlayerCount;
+
+    G_InfectedPlayerCount    = CountInfected();
+    Prev_InfectedPlayerCount = G_InfectedPlayerCount;
+    Net_InfectedCount        = G_InfectedPlayerCount;
+
+    foreach(Gate in G_CondGates_Up_Always) {
+        UpdateGateStatus(Gate);
+    }
+}
+// This can be out of sync because of `OnInfect`, `OnNewPlayer`, `OnNewSpectator`
+if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
+    Prev_InfectedPlayerCount = G_InfectedPlayerCount;
+    Net_InfectedCount = G_InfectedPlayerCount;
+
+    foreach(Gate in G_CondGates_Up_Always) {
+        UpdateGateStatus(Gate);
+    }
+}
+
+if(PrevInfectionTickTime + C_InfectionTick < Now) {
+    PrevInfectionTickTime = Now;
+
+    foreach(Player in Players) {
+        if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
+            declare Integer SpawnTime for Player;
+            if(C_InfectOnRespawn && SpawnTime != -1 && !IsInfected(Player)) {
+                OnInfect(Player, Null);
+            }
+            SpawnAndInitPlayer(Player);
             continue;
         }
-        declare netwrite Net_Infected for Player = False;
-        declare netwrite Net_SurvNear for Player = 0.0;
-
-        Net_Infected = IsInfected(Player);
-
-        if (!Player.IsBot && Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && Player.IdleDuration > C_IdleSpec * 1.5)
-        {
-            declare SpawnTime for Player = Now;
-
-            if (Now - SpawnTime > C_IdleSpec * 0.5)
-            {
-                UIManager.UIAll.SendChat(Player.Name ^ "$z$s idled too long and has been kicked.");
-                declare Tmp = Admin_KickUser(Player.User, "You idled to long and have been kicked.");
-            }
+        if(Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
+            continue;
         }
 
-        if (!Player.IsBot && Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && Player.IdleDuration > C_IdleSpec)
-        {
-            declare SpawnTime for Player = Now;
+        if(IsInfected(Player)) {
+            // Infected
 
-            if (Now - SpawnTime > C_IdleSpec)
-            {
-                SpawnTime = Now;
-                Users_RequestSwitchToSpectator(Player.User);
-                UIManager.UIAll.SendChat(Player.Name ^ "$z$s idled too long and has been moved to spectators.");
+            // Provide infinite stamina for infected
+            if(S_InfectedStaminaGain > 1.0) {
+                Player.Stamina = C_StaminaMax;
             }
-        }
 
-        if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && IsInfected(Player))
+            // Check for infection and nearest survivor
+            ManageInfectedPlayer(Player);
+        } else {
+            // Survivor
+
+            // Provide infinite stamina for survivor
+            if(S_SurvivorStaminaGain > 1.0) {
+                Player.Stamina = C_StaminaMax;
+            }
+
+            // Check if leaving the map, and take some actions
+            ManageMapLeaver(Player);
+        }
+    }
+
+    Message::Loop();
+    Top::Loop();
+}
+
+if(EndTime > -1 && EndTime <= Now) {
+    if(!InfectionStarted) {
+        // Begin infection round
+        FirstInfectedId = GetFirstInfected();
+        if(Players.existskey(FirstInfectedId)) {
+            declare FirstInfected <=> Players[FirstInfectedId];
+
+            Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
+            Message::SendBigMessage(FirstInfected, "$360First Infected!", 4000, 1);
+            foreach(Survivor in AllPlayers) {
+                if(IsInfected(Survivor))
+                    continue;
+
+                Message::SendBigMessage(Survivor, FirstInfected.Name ^ "$z$s$360 is the first infected!", 4000, 1);
+            }
+
+            InfectionStarted = True;
+            if(S_TimeLimit > 0) {
+                EndTime = Now + S_TimeLimit;
+            } else {
+                EndTime = -1;
+            }
+        } else {
+            // This must not happen
+            log("First infected left immediately, this must not happen!");
+            MB_StopRound();
+        }
+    } else {
+        // End infection round
+        MB_StopRound();
+    }
+}
+
+foreach(Event in PendingEvents) {
+    switch(Event.Type) {
+        case CSmModeEvent::EType::OnHit:
         {
-            declare minSmellDist = S_SmellMaxDist;
-            foreach (Victim in AllPlayers)
-            {
-                if (Victim.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && !IsInfected(Victim))
-                {
-                    declare distance = ML::Distance(Player.Position, Victim.Position);
-                    if (distance < S_InfectionDistance)
-                    {
-                        Infect(Victim, Player);
-                        +++OnTouch+++
-                    }
-                    if (distance < minSmellDist)
-                    {
-                        minSmellDist = distance;
-                    }
+            if(Event.Shooter == Event.Victim) {
+                Discard(Event);
+                continue;
+            }
+            declare ShooterInfected = IsInfected(Event.Shooter);
+            declare VictimInfected  = IsInfected(Event.Victim);
+            if(VictimInfected && !ShooterInfected) {
+                // OnSurvivorHitInfected
+                if(S_HitInfectedScore != 0) {
+                    OnHit(Event, S_HitInfectedScore);
+                    PassOn(Event);
+                } else {
+                    Discard(Event);
                 }
-                Net_SurvNear = 1.0 - minSmellDist / S_SmellMaxDist;
-            }
-        }
-    }
-}
-
-if (LastCountTick + C_CountTick < Now)
-{
-    UpdateCounts();
-    UpdateSpectatorUI();
-    LastCountTick = Now;
-    InfCount = NbInfected;
-    PlayerCount = NbPlayers;
-}
-
-if (EndTime > -1 && EndTime <= Now)
-{
-    if (!InfectionStarted)
-    {
-        declare CSmPlayer Player = Null;
-
-        if (FirstInfectedLogin != "")
-        {
-            foreach (_Player, Players)
-            {
-                if (_Player.Login == FirstInfectedLogin)
-                {
-                    Player = _Player;
-                    log ("Infecting " ^ FirstInfectedLogin ^ " because he just left.");
-                    FirstInfectedLogin = "";
+            } else if(!VictimInfected && !ShooterInfected) {
+                // OnSurvivorHitSurvivor
+                if(S_PVP && S_HitSurvivorScore != 0) {
+                    OnHit(Event, S_HitSurvivorScore);
+                    PassOn(Event);
+                } else {
+                    Discard(Event);
                 }
-            }
-        }
-        if (Player == Null)
-        {
-            Player = GetFirstInfected();
-        }
-        +++FirstInfection+++
-        log ("First infection");
-        InfectionStarted = True;
-        if (S_TimeLimit > 0)
-        {
-            EndTime = Now + S_TimeLimit;
-        }
-        else
-        {
-            EndTime = -1;
-        }
-        Infect(Player, Null);
-        ScoresTable::SetCustom1(Player, C_FirstInfected);
-        FirstInfected = Player.Id;
-        FirstInfectedLogin = Player.Login;
-    }
-    else
-    {
-        MB_StopRound = True;
-    }
-}
-
-if (InfectionStarted && NbInfected < 1)
-{
-    MB_StopRound = True;
-}
-
-if (NbInfected >= NbPlayers)
-{
-    MB_StopRound = True;
-}
-
-if (NbPlayers < S_MinPlayers)
-{
-    MB_StopRound = True;
-}
-
-/* -------------------------------------- */
-// Manage events
-foreach (Event in PendingEvents)
-{
-    if (Event.Type == CSmModeEvent::EType::OnHit)
-    {
-        Event.Damage = 100;
-        if (Event.Shooter == Event.Victim)
-        {
-            Discard (Event);
-        }
-        else if(!IsInfected(Event.Victim))
-        {
-            if (IsInfected(Event.Shooter) && S_FirstInfectedShoot && InfectedCount() <= 1)
-            {
-                declare Player <=> Event.Shooter;
-                declare Victim <=> Event.Victim;
-                Infect(Event.Victim, Event.Shooter);
-                +++OnTouch+++
+            } else if(!VictimInfected && ShooterInfected) {
+                // OnInfectedHitSurvivor
+                OnInfect(Event.Victim, Event.Shooter);
+                Discard(Event);
+            } else {
+                // OnInfectedHitInfected
                 Discard(Event);
             }
-            else if (!S_HitSurvivors)
-            {
-                Discard(Event);
-            }
-            else
-            {
-                declare Points = Event.Damage / 100 * S_HitScore;
-                Scores::AddPoints(Event.Shooter, Points);
-                Event.ShooterPoints = Points;
-                PassOn(Event);
-                +++OnHit+++
-            }
         }
-        else
-        {
-            declare Points = Event.Damage / 100 * S_HitScore;
-            Scores::AddPoints(Event.Shooter, Points);
-            Event.ShooterPoints = Points;
+        case CSmModeEvent::EType::OnCommand:
+            //TODO:???
+            /*switch (Event.CommandName)
+            {
+                case "Infect":
+                {
+                    if (Event.CommandValueInteger > 0)
+                    {
+                        for (I, 1, Event.CommandValueInteger)
+                        {
+                            InfectRandomSurvivor();
+                        }
+                    }
+                }
+            }*/
+            Discard(Event);
+        // case CSmModeEvent::EType::OnPlayerRequestRespawn:
+        //     PassOn(Event);
+        default:
             PassOn(Event);
-            +++OnHit+++
-        }
-    }
-    else if (Event.Type == CSmModeEvent::EType::OnPlayerRequestRespawn)
-    {
-        if (Event.Player != Null)
-        {
-
-        }
-        PassOn(Event);
-    }
-    else if (Event.Type == CSmModeEvent::EType::OnCommand)
-    {
-        switch (Event.CommandName)
-        {
-            case "Infect":
-            {
-                if (Event.CommandValueInteger > 0)
-                {
-                    for (I, 1, Event.CommandValueInteger)
-                    {
-                        InfectRandomSurvivor();
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        PassOn(Event);
     }
 }
 
-foreach (Event in XmlRpc.PendingEvents)
-{
-    if (Event.Type == CXmlRpcEvent::EType::Callback)
-    {
-        switch (Event.Param1)
-        {
-            case "Inf_Infect":
-                InfectLogin(Event.Param2);
-        }
-    }
+if((InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
+    MB_StopRound();
 }
 
-foreach(Player in Players)
-{
-    if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned)
-    {
-        ---SpawnPlayer---
-    }
-}
-
-foreach (Player in BotPlayers)
-{
-    if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned)
-    {
-        ---SpawnPlayer---
-    }
-}
 ***
 
 ***EndRound***
 ***
 Top::Loop();
-UpdateCounts();
-sleep(500);
+Scores::RoundEnd();
+
 StartTime = -1;
-EndTime = -1;
-if (FirstInfected != NullId && AllPlayers.existskey(FirstInfected)
-        && AllPlayers[FirstInfected].Score != Null
-        && NbInfected >= NbPlayers)
-{
-    Scores::AddPoints(AllPlayers[FirstInfected], ML::NearestInteger(InfectedCount() * S_FirstInfectedScore));
+EndTime   = -1;
+
+if(S_RewardFirstInfected > 0.0 && Players.existskey(FirstInfectedId)) {
+    declare FirstInfected <=> Players[FirstInfectedId];
+    Scores::AddPoints(FirstInfected, ML::NearestInteger(G_InfectedPlayerCount * S_RewardFirstInfected));
 }
-/* -------------------------------------- */
+
 // Clean UI
 Message::CleanAllMessages();
 
-/* -------------------------------------- */
 // Display result
-declare tmp = UIManager.UIAll.UILayers.removekey(RoundInfoLayerId);
-UIManager.UIAll.UISequence              = CUIConfig::EUISequence::EndRound;
-UIManager.UIAll.BigMessageSound         = CUIConfig::EUISound::EndRound;
-UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::ForcedVisible;
-UIManager.UIAll.StatusMessage           = "";
-sleep(2000);
+UIManager.UIAll.UILayers.removekey(G_RoundInfoLayerId);
+UIManager.UIAll.UISequence           = CUIConfig::EUISequence::EndRound;
+UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::EndRound;
+UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::ForcedVisible;
+UIManager.UIAll.StatusMessage        = "";
 
-Scores::RoundEnd();
-
-if (InfectedCount() >= PlayerCount())
-{
-    UIManager.UIAll.BigMessage          = "All players are infected.";
-}
-else if (EndTime > -1 && EndTime <= Now)
-{
-    UIManager.UIAll.BigMessage          = "Time limit reached.";
-    declare Survivors = NbPlayers - NbInfected;
-    if (Survivors > 1)
-    {
-        UIManager.UIAll.StatusMessage   = TL::Compose("$360%1 $fffplayers survived.", TL::ToText(Survivors));
-    }
-    else
-    {
-        UIManager.UIAll.StatusMessage   = "$3601 $fffplayer survived.";
-    }
-}
-else if (NbPlayers < S_MinPlayers)
-{
-    UIManager.UIAll.BigMessage          = "Not enough players.";
-    UIManager.UIAll.StatusMessage       = TL::Compose("At least $f00%1 $fffplayers are needed.", TL::ToText(S_MinPlayers));
+if(G_InfectedPlayerCount >= Players.count) {
+    UIManager.UIAll.BigMessage = C_TxtAllPlayersInfected;
+} else if(G_InfectedPlayerCount == 0) {
+    UIManager.UIAll.BigMessage = C_TxtNoMoreInfected;
     MB_SectionRoundNb -= 1;
-}
-else if (NbInfected < 1)
-{
-    UIManager.UIAll.BigMessage          = "No more infected players.";
-    MB_SectionRoundNb -= 1;
+} else {
+    UIManager.UIAll.BigMessage    = C_TxtTimeLimitReached;
+    UIManager.UIAll.StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(Players.count - G_InfectedPlayerCount));
 }
 
-if (NbInfected > 0)
-{
-    FirstInfectedLogin = "";
-}
-
-/* -------------------------------------- */
-if (S_ScoreLimit > 0)
-{
-    foreach (Player in Players)
-    {
-        if (Player.Score != Null && Player.Score.Points >= S_ScoreLimit)
-        {
-            MB_StopMap = True;
+// Check for limits
+if(S_ScoreLimit > 0) {
+    foreach(Player in Players) {
+        if(Player.Score != Null && Player.Score.Points >= S_ScoreLimit) {
+            MB_StopMap();
             break;
         }
     }
 }
 
-if (S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit)
-{
-    MB_StopMap = True;
+if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
+    MB_StopMap();
 }
-if (!MB_StopMap)
-{
-    sleep(C_RoundPauseTime);
-}
-UIManager.UIAll.StatusMessage           = "";
-UIManager.UIAll.BigMessage              = "";
-UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::Normal;
-/* -------------------------------------- */
-// Go to next round
+
+sleep(C_RoundPauseTime);
+
+UIManager.UIAll.StatusMessage        = "";
+UIManager.UIAll.BigMessage           = "";
+UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::Normal;
+
 SM::UnspawnAllPlayers();
 DestroyAllBotPlayers();
 ***
 
 ***EndMap***
 ***
-UseClans = False;
-UseForcedClans = False;
+// UseClans = False;
+// UseForcedClans = False;
 /* -------------------------------------- */
 // Update map scores
 ScoresTable::EndMatch();
@@ -983,10 +652,9 @@ foreach (Player in Players)
     }
 }
 
-foreach (Player, AllPlayers)
-{
-    declare Tmp = Layers::Detach("Infection", Player.Id);
-    Tmp = Layers::Detach("InfSpectator", Player.Id);
+foreach(Player in AllPlayers) {
+    Layers::Detach("Infection", Player.Id);
+    Layers::Detach("InfSpectator", Player.Id);
 }
 
 if (MaxScore == 0)
@@ -1025,6 +693,13 @@ UIManager.UIAll.UISequence              = CUIConfig::EUISequence::Podium;
 sleep(C_MatchPauseTime - 2000);
 UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::Normal;
 UIManager.UIAll.BigMessage              = "";
+
+G_InfectedSpawns.clear();
+G_SurvivorSpawns.clear();
+OffZoneCenterLandmarkId = NullId;
+OffZoneRadius = -1.0;
+G_CondGates_Up_Always.clear();
+G_CondGates_Up_EachRound.clear();
 ***
 
 ***EndServer***
@@ -1042,157 +717,90 @@ Color::Unload();
 ScoresTable::Unload();
 ***
 
-Void KillLeavers()
-{
-    foreach (Player in AllPlayers)
-    {
-        if (Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) continue;
-        declare LeftSince for Player = 0;
-
-        if (Player.Position.X < -8
-            || Player.Position.Z < -8
-            || Player.Position.X / 8 > Map.Size.X
-            || Player.Position.Z / 8 > Map.Size.Z)
-        {
-            if (LeftSince == 0)
-            {
-                LeftSince = Now;
-            }
-            else if (Now - LeftSince > 10000)
-            {
-                Player.Armor = 0;
-                if (!Player.IsBot)
-                {
-                    UIManager.GetUI(Player).BigMessage = "";
-                    UIManager.GetUI(Player).StatusMessage = "";
-                }
-            }
-            else if (!Player.IsBot)
-            {
-                UIManager.GetUI(Player).BigMessage = "Get back to the battlefield!";
-                UIManager.GetUI(Player).StatusMessage = TL::Compose("Elimination in %1 seconds.", TL::ToText(10 - ML::FloorInteger((Now - LeftSince) / 1000.)));
-            }
-        }
-        else if (LeftSince != 0)
-        {
-            if (!Player.IsBot)
-            {
-                UIManager.GetUI(Player).BigMessage = "";
-                UIManager.GetUI(Player).StatusMessage = "";
-            }
-            LeftSince = 0;
-        }
-    }
-}
-
-Integer RealRandom(Integer Min, Integer Max)
-{
-    declare Rand = ML::Rand(Min, Max);
-
-    foreach(Player in Players)
-    {
-        Rand += ML::Abs(ML::NearestInteger(Player.Position.X * Player.Position.Y * Player.Position.Z));
-    }
-    return Min + (Rand % (Max - Min + 1));
-}
-
-CSmPlayer GetFirstInfected()
-{
-    declare Ident[] Ids;
-    declare Integer Rand;
-
-    foreach (Player, Players)
-    {
-        declare Amnt = ML::NearestInteger(ML::Sqrt(12. * Player.Score.Points / 2 + 1));
-
-        for (I, 1, Amnt)
-        {
-            Ids.add(Player.Id);
-        }
-    }
-
-    foreach (Player, BotPlayers)
-    {
-        Ids.add(Player.Id);
-    }
-
-    Rand = RealRandom(0, 100) % Ids.count;
-
-    return AllPlayers[Ids[Rand]];
-}
-
-Void UpdateSpawns(Integer Clan)
-{
-    foreach(Spawn in MapLandmarks_PlayerSpawn)
-    {
-        SpawnQueue[0].add(Spawn);
-    }
-}
-
-Void UpdateSpawns()
-{
-    SpawnQueue = [0=>CSmMapLandmark[], 1=>CSmMapLandmark[], 2=>CSmMapLandmark[]];
-    foreach(Spawn in MapLandmarks_PlayerSpawn)
-    {
-        SpawnQueue[0].add(Spawn);
-    }
-}
-
-CSmMapLandmark FindSpawn(Integer Clan)
-{
-    declare CSmMapLandmark[] Spawns;
-    if (SpawnQueue[0].count < 1)
-    {
-        UpdateSpawns();
-    }
-    Spawns = SpawnQueue[0];
-    declare CSmMapLandmark Spawn <=> Spawns[0];
-    declare ADV = SpawnQueue[0].remove(Spawn);
-    return Spawn;
-}
-
-Boolean IsInfected(CSmPlayer Player)
-{
-    if (Player != Null)
-    {
-        declare Infected for Player = False;
-
+Boolean IsInfected(CSmPlayer _Player) {
+    if(_Player != Null) {
+        declare Infected for _Player = S_InfectNewPlayers;
         return Infected;
     }
     return False;
 }
 
-Integer InfectedCount()
-{
-    declare Count = 0;
-    foreach (Player in Players)
-    {
-        if (IsInfected(Player))
-        {
+Integer CountInfected() {
+    declare Integer Count = 0;
+    foreach(Player in Players) {
+        if(IsInfected(Player))
             Count += 1;
-        }
     }
-    foreach (Player in BotPlayers)
-    {
-        if (IsInfected(Player))
-        {
-            Count += 1;
-        }
-    }
-
     return Count;
 }
 
-Integer PlayerCount()
-{
-    return Players.count + BotPlayers.count;
+Real ML__FMod(Real _Value, Real _Mod) {
+    return _Value - ML::ToReal(ML::FloorInteger(_Value / _Mod)) * _Mod;
+}
+
+Real RealRandom(Real _Max) {
+    declare Real Rand = ML::Rand(0.0, _Max);
+    foreach(Player in Players) {
+        Rand = ML__FMod(Rand + Player.Position.X +
+                               Player.Position.Y +
+                               Player.Position.Z, _Max);
+    }
+    return Rand;
+}
+
+Real SigmoidProbability(Real _X, Real _Max) {
+    //https://www.wolframalpha.com/input/?i=plot+y+%3D+(100+-+100%2F(1+%2B+(x%2F(100*2%2F3))%5E6)%5E2)%2F100,+x%3D0..100
+    if(_Max <= 0.000001) {
+        return 1.0;
+    }
+    return 1 - 1 / (
+                    ML::Pow(1 + ML::Pow(_X / (_Max * 2 / 3), 6.0), 2.0)
+                   );
+}
+
+CSmPlayer GetFirstInfected() {
+    declare Integer IMaxPoints = -1;
+    declare Real    RMaxPoints = -1.0;
+    declare Real    SumProb    = 0.0;
+    declare Real    RandomNum;
+
+    // Find Max Score
+    foreach(Player in Players) {
+        if(Player.Score != Null) {
+            if(IMaxPoints < Player.Score.Points)
+                IMaxPoints = Player.Score.Points;
+        }
+    }
+    RMaxPoints = ML::ToReal(IMaxPoints);
+
+    // Calculate probabilities of being chosen
+    foreach(Player in Players) {
+        declare Real ProbFirstInf for Player;
+        declare Real Points = 0.0;
+        if(Player.Score != Null)
+            Points = ML::ToReal(Player.Score.Points);
+        ProbFirstInf = SigmoidProbability(Points, RMaxPoints);
+        SumProb += ProbFirstInf;
+    }
+
+    RandomNum = RealRandom(SumProb);
+    foreach(Player in Players) {
+        declare Real ProbFirstInf for Player = 0.0;
+        RandomNum -= ProbFirstInf;
+        if(RandomNum <= 0.0) {
+            return Player;
+        }
+    }
+
+    log("this must not happen! No random player was chosen! Choosing first one...");
+    return Players[0];
 }
 
 Text UpdateRoundML()
 {
     return """
-        <label style="TextRaceChrono" posn="119 -74" valign="bottom" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{InfectedCount()}}}" id="Infs"/>
-        <label posn="120 -72" valign="bottom" text="/{{{PlayerCount()}}} infected" id="Players" />
+        <label style="TextRaceChrono" posn="119 -74" valign="bottom" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{G_InfectedPlayerCount}}}" id="Infs"/>
+        <label posn="120 -72" valign="bottom" text="/{{{Players.count}}} infected" id="Players" />
         <label style="TextTitle1" posn="0 20" halign="center" opacity="0.0" textcolor="f00" id="IdleLabel">$sYou are considered inactive. Please move in order to not get kicked!</label>
         <label style="TextRaceChrono" posn="0 15" halign="center" visible="false" id="IdleTime" />
         <frame id="FrmInfOnly">
@@ -1209,40 +817,37 @@ Text UpdateRoundML()
 
         {{{Manialink::Animations(["EaseInOutQuad"])}}}
 
-        main()
-        {
-            declare netread InfCount for Teams[0] = 0;
-            declare netread PlayerCount for Teams[0] = 0;
-            declare netread Net_Infected for InputPlayer = False;
-            declare netread Net_SurvNear for InputPlayer = 0.0;
+        main() {
+            declare netread Net_InfectedCount   for Teams[0] = 0;
+            declare netread Net_PlayerCount     for Teams[0] = 0;
+            declare netread Net_Infected        for InputPlayer = False;
+            declare netread Net_NearestSurvivor for InputPlayer = 0.0;
             declare SurvNear = 0.0;
 
-            declare LblIdle = (Page.GetFirstChild("IdleLabel") as CMlLabel);
-            declare LblIdleTime = (Page.GetFirstChild("IdleTime") as CMlLabel);
-            declare LblInfs = (Page.GetFirstChild("Infs") as CMlLabel);
-            declare LblPlayers = (Page.GetFirstChild("Players") as CMlLabel);
-            declare FrmSurvNear = (Page.GetFirstChild("FrmSurvNear") as CMlFrame);
-            declare FrmInfOnly = (Page.GetFirstChild("FrmInfOnly") as CMlFrame);
+            declare LblIdle      = (Page.GetFirstChild("IdleLabel")    as CMlLabel);
+            declare LblIdleTime  = (Page.GetFirstChild("IdleTime")     as CMlLabel);
+            declare LblInfs      = (Page.GetFirstChild("Infs")         as CMlLabel);
+            declare LblPlayers   = (Page.GetFirstChild("Players")      as CMlLabel);
+            declare FrmSurvNear  = (Page.GetFirstChild("FrmSurvNear")  as CMlFrame);
+            declare FrmInfOnly   = (Page.GetFirstChild("FrmInfOnly")   as CMlFrame);
             declare QuadSurvNear = (Page.GetFirstChild("QuadSurvNear") as CMlQuad);
 
             QuadSurvNear.ModulateColor = <0., 1., 0.>;
 
-            while (True)
-            {
+            while (True) {
                 yield;
                 LibManialink_AnimLoop();
-                LblInfs.Value = "" ^ InfCount;
-                LblPlayers.Value = "/" ^ PlayerCount ^ " infected";
-                FrmInfOnly.Visible = Net_Infected && InfCount > 1;
-                if (Net_SurvNear != SurvNear)
-                {
-                    SurvNear = Net_SurvNear;
-                    if (Net_SurvNear >= 0. && Net_SurvNear <= 1.)
+                LblInfs.Value = TL::ToText(Net_InfectedCount);
+                LblPlayers.Value = TL::ToText(Net_PlayerCount);
+                FrmInfOnly.Visible = Net_Infected;
+                if (Net_NearestSurvivor != SurvNear) {
+                    SurvNear = Net_NearestSurvivor;
+                    if (Net_NearestSurvivor >= 0. && Net_NearestSurvivor <= 1.)
                     {
                         declare X = 0.5;
-                        X += Net_SurvNear / 2.;
+                        X += Net_NearestSurvivor / 2.;
                         LibManialink_Anim("<quad id=\"QuadSurvNear\" colorize=\"" ^ TL::ColorToText(<X, X, X>) ^ "\" />", 200, "EaseInOutQuad");
-                        LibManialink_Anim("<gauge id=\"SurvNear\" ratio=\"" ^ Net_SurvNear ^ "\" />", 200, "EaseInOutQuad");
+                        LibManialink_Anim("<gauge id=\"SurvNear\" ratio=\"" ^ Net_NearestSurvivor ^ "\" />", 200, "EaseInOutQuad");
                     }
                     else
                     {
@@ -1278,15 +883,15 @@ Text UpdateRoundML()
 Text UpdateSpecML()
 {
     declare ML = """
-        <label style="TextRaceChrono" posn="119 -74" valign="bottom" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{InfectedCount()}}}" id="Infs"/>
-        <label posn="120 -72" valign="bottom" text="/{{{PlayerCount()}}} infected" id="Players" />
+        <label style="TextRaceChrono" posn="119 -74" valign="bottom" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{G_InfectedPlayerCount}}}" id="Infs"/>
+        <label posn="120 -72" valign="bottom" text="/{{{Players.count}}} infected" id="Players" />
 """;
         /*
         for (I, 0, 9)
         {
             ML ^= """
         <frame posn="160 {{{70-6*I}}}" id="Frm_Survivor_{{{I}}}">
-            <quad halign="right" sizen="40 6" bgcolor="{{{TL::ColorToText(C_DefaultColor)}}}{{{7 - (I%2) * 3}}}" />
+            <quad halign="right" sizen="40 6" bgcolor="{{{TL::ColorToText(C_SurvivorColor)}}}{{{7 - (I%2) * 3}}}" />
         </frame>
         <frame posn="-160 {{{70-6*I}}}" id="Frm_Infected_{{{I}}}">
             <quad sizen="40 6" bgcolor="{{{TL::ColorToText(C_InfectedColor)}}}{{{7 - (I%2) * 3}}}"  />
@@ -1301,7 +906,8 @@ Text UpdateSpecML()
         {
             declare netread InfCount for Teams[0] = 0;
             declare netread PlayerCount for Teams[0] = 0;
-            declare LblInfs = (Page.GetFirstChild("Infs") as CMlLabel);
+
+            declare LblInfs    = (Page.GetFirstChild("Infs")    as CMlLabel);
             declare LblPlayers = (Page.GetFirstChild("Players") as CMlLabel);
 
             while (True)
@@ -1318,185 +924,592 @@ Text UpdateSpecML()
     return ML;
 }
 
-Void UpdateScoresTable(CSmPlayer Player)
-{
-    declare Infections for Player = 0;
-    declare Hits for Player = 0;
-    declare SurvivalScore for Player = 0;
-
-    ScoresTable::SetCustom3(Player, "$360" ^ Infections ^ "$fff/$f00" ^ Hits ^ "$fff/$ff0" ^ SurvivalScore);
+CSmMapPlayerSpawn GetRandomSurvivorSpawn() {
+    return G_SurvivorSpawns[ML::Rand(0, G_SurvivorSpawns.count - 1)].PlayerSpawn;
 }
 
-Void UpdateMSM()
-{
-    declare InfCount = InfectedCount();
-    declare PlaCount = PlayerCount();
-    if (InfCount != 1)
-    {
-        ModeStatusMessage = TL::Compose("$360%1$g of $f00%2$g player(s) are infected.", TL::ToText(InfCount), TL::ToText(PlaCount));
+CSmMapPlayerSpawn GetRandomInfectedSpawn() {
+    return G_InfectedSpawns[ML::Rand(0, G_InfectedSpawns.count - 1)].PlayerSpawn;
+}
+
+Void InitSurvivor(CSmPlayer _Player) {
+    _Player.ForceColor    = C_SurvivorColor;
+    _Player.HasShield     = C_SurvivorHasShield;
+    _Player.IsHighlighted = C_SurvivorIsHighlighted;
+    _Player.EnergyLevel   = C_SurvivorEnergyLevel;
+
+    // Setup armor
+    if(S_SurvivorMaxArmor > 0) {
+        _Player.ArmorMax = S_SurvivorMaxArmor * 100;
     }
-    else
-    {
-        ModeStatusMessage = TL::Compose("$3601$g of $f00%1$g player(s) is infected.", TL::ToText(PlaCount));
+    if(S_SurvivorRespawnArmor > 0) {
+        _Player.Armor = S_SurvivorRespawnArmor * 100;
+    }
+    if(_Player.Armor > _Player.ArmorMax) {
+        _Player.Armor = _Player.ArmorMax;
+    }
+
+    // Setup stamina
+    if(S_SurvivorStamina >= 0.1 && S_SurvivorStamina <= 3.0) {
+        _Player.StaminaMax = S_SurvivorStamina;
+    } else {
+        _Player.StaminaMax = 1.0;
+    }
+    if(S_SurvivorStaminaGain >= 0.0 && S_SurvivorStaminaGain <= 1.0) {
+        _Player.StaminaGain = S_SurvivorStaminaGain;
+    } else {
+        _Player.StaminaGain = 1.0;
     }
 }
 
-Void UpdateCounts()
-{
-    declare LastNbInfs = NbInfected;
-    NbInfected = InfectedCount();
-    NbPlayers = PlayerCount();
-    if (LastNbInfs > 1 && NbInfected == 1)
-    {
-        foreach (Player, Players)
+Void InitInfected(CSmPlayer _Player) {
+    _Player.ForceColor    = C_InfectedColor;
+    _Player.HasShield     = C_InfectedHasShield;
+    _Player.IsHighlighted = C_InfectedIsHighlighted;
+    _Player.EnergyLevel   = C_InfectedEnergyLevel;
+
+    // Setup armor
+    if(S_InfectedMaxArmor > 0) {
+        _Player.ArmorMax = S_InfectedMaxArmor * 100;
+    }
+    if(S_InfectedRespawnArmor > 0) {
+        _Player.Armor = S_InfectedRespawnArmor * 100;
+    }
+    if(_Player.Armor > _Player.ArmorMax) {
+        _Player.Armor = _Player.ArmorMax;
+    }
+
+    // Setup stamina
+    if(S_InfectedStamina >= 0.1 && S_InfectedStamina <= 3.0) {
+        _Player.StaminaMax = S_InfectedStamina;
+    } else {
+        _Player.StaminaMax = 1.0;
+    }
+    if(S_InfectedStaminaGain >= 0.0 && S_InfectedStaminaGain <= 1.0) {
+        _Player.StaminaGain = S_InfectedStaminaGain;
+    } else {
+        _Player.StaminaGain = 1.0;
+    }
+}
+
+Void SetupSurvivorWeapons(CSmPlayer _Player) {
+    switch(S_PursuitMode) {
+        case 0:
         {
-            if (IsInfected(Player))
-            {
-                SetPlayerAmmoMax(Player, ::EWeapon::Rocket, 1);
-                return;
+            _Player.AmmoGain = 1.0;
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   1);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  4);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 1);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   2);
+        }
+        case 1:
+        {
+            _Player.AmmoGain = 1.0;
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   1);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  4);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 2);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   3);
+        }
+        case 2:
+        {
+            _Player.AmmoGain = 10.0;
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   10);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  10);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 10);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   10);
+        }
+    }
+    SetPlayerAmmo(_Player, CSmMode::EWeapon::Rocket, GetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket));
+    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
+        SetPlayerWeapon(_Player, CSmMode::EWeapon::Rocket, True);
+    }
+}
+
+Void SetupInfectedWeapons(CSmPlayer _Player) {
+    switch(S_PursuitMode) {
+        case 0:
+        {
+            _Player.AmmoGain = 0.0;
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   0);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  0);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 0);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   0);
+            // Override default settings
+            if(S_InfectedShoot == 2 || (S_InfectedShoot == 1 && G_InfectedPlayerCount == 1)) {
+                _Player.AmmoGain = S_InfectedWAmmoGain;
+                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   S_InfectedWLaserMax);
+                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  S_InfectedWRocketMax);
+                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, S_InfectedWNucleusMax);
+                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   S_InfectedWArrowMax);
             }
         }
-        foreach (Player, BotPlayers)
+        case 1:
         {
-            if (IsInfected(Player))
-            {
-                SetPlayerAmmoMax(Player, ::EWeapon::Rocket, 1);
-                return;
-            }
+            _Player.AmmoGain = 1.0;
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   1);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  4);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 2);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   3);
         }
+        case 2:
+        {
+            _Player.AmmoGain = 10.0;
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   10);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  10);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 10);
+            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   10);
+        }
+    }
+    SetPlayerAmmo(_Player, CSmMode::EWeapon::Rocket, GetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket));
+    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
+        SetPlayerWeapon(_Player, CSmMode::EWeapon::Rocket, True);
     }
 }
 
-Void UpdateSpectatorUI()
-{
-    foreach (Spectator, Spectators)
-    {
-        declare Tmp = Layers::Detach("Infection", Spectator.Id);
-        Tmp = Layers::Attach("InfSpectator", Spectator.Id);
+Void SpawnAndInitPlayer(CSmPlayer _Player) {
+    declare Boolean Infected  for _Player = False;
+    declare Integer SpawnTime for _Player;
+    declare Integer ClanNum = 0;
+    declare CSmMapPlayerSpawn PlayerSpawn;
+
+    if(SpawnTime == -1) {
+        SpawnTime = Now + S_RespawnDelay;
+    }
+
+    if(!Infected) {
+        // Survivor
+        InitSurvivor(_Player);
+        if(S_UseClans) {
+            ClanNum = C_SurvivorClanNum;
+        }
+        PlayerSpawn <=> GetRandomSurvivorSpawn();
+    } else {
+        // Infected
+        InitInfected(_Player);
+        if(S_UseClans) {
+            ClanNum = C_InfectedClanNum;
+        }
+        PlayerSpawn <=> GetRandomInfectedSpawn();
+    }
+
+    SM::SpawnPlayer(_Player, ClanNum, _Player.Armor, PlayerSpawn, SpawnTime);
+
+    // Weapons setup
+    // can be done only after spawn :(
+    if(!Infected) {
+        // Survivor
+        SetupSurvivorWeapons(_Player);
+    } else {
+        // Infected
+        SetupInfectedWeapons(_Player);
     }
 }
 
-Void Infect(CSmPlayer Player, CSmPlayer Infecter)
-{
-    if (Player == Null || !AllPlayers.exists(Player)) return;
-    declare Boolean Infected for Player;
-    declare Integer SpawnTime for Player;
+Void UpdateScoresTable(CSmPlayer Player) {
+    declare Round_Infections for Player = 0;
+    declare Round_Hits       for Player = 0;
+    declare Round_Survivals  for Player = 0;
 
-    Infected = True;
-    //Player.ForceColor = C_InfectedColor;
-    if (S_RespawnOnInfection && Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned)
-    {
-        //AddPlayerArmor(Player, -Player.Armor, Infecter, S_InfectionScore);
-        //RemovePlayerArmor(Player, Player.Armor, Infecter, S_InfectionScore);
-        UnspawnPlayer(Player);
-    }
-    if (InfectedCount() <= 1 && S_FirstInfectedShoot)
-    {
-        SetPlayerAmmoMax(Player, CSmMode::EWeapon::Rocket, 1);
-    }
-    else
-    {
+    ScoresTable::SetCustom3(Player,
+        TL::Compose("$360%1$fff/$f00%2$fff/$ff0%3",
+            TL::ToText(Round_Infections),
+            TL::ToText(Round_Hits),
+            TL::ToText(Round_Survivals)
+        )
+    );
+}
 
-        foreach (Player in AllPlayers)
-        {
-            if (IsInfected(Player))
+Void UpdateModeStatusMessage() {
+    ModeStatusMessage = TL::Compose(
+        """Currently on the server:
+-   $360%1$g infected,
+-   $f00%2$g survivors, and
+-   $aaa%3$g spectators.
+    """,
+        TL::ToText(G_InfectedPlayerCount),
+        TL::ToText(Players.count - G_InfectedPlayerCount),
+        TL::ToText(Spectators.count)
+    );
+}
+
+Void RewardInfector(CSmPlayer _Infector, Real _Score) {
+    if(_Score < 1.0)
+        return;
+    declare Ident InfectorId for _Infector;
+    if(InfectorId != NullId && Players.existskey(InfectorId)) {
+        declare _Parent = Players[InfectorId];
+        Scores::AddPoints(_Parent, ML::NearestInteger(_Score));
+        RewardInfector(_Parent, _Score * S_RewardInfectors);
+    }
+}
+
+Void RewardSurvivorsForSurvivingInfection() {
+    foreach(Survivor in Players) {
+        if(IsInfected(Survivor))
+            continue;
+
+        declare Round_Survivals for Survivor = 0;
+        declare Match_Survivals for Survivor = 0;
+        Round_Survivals += 1;
+        Match_Survivals += 1;
+        Top::SetRecord(Survivor, C_TopSurivals, TL::ToText(Match_Survivals), -Match_Survivals);
+        Scores::AddPoints(Survivor, S_ScoreForSurv1Inf);
+        UpdateScoresTable(Survivor);
+    }
+}
+
+Void OnHit(CSmModeEvent _Event, Integer _Multiplier) {
+    declare Match_Hits for _Event.Shooter = 0;
+    declare Round_Hits for _Event.Shooter = 0;
+    declare Integer Points = _Event.Damage / 100 * _Multiplier;
+    Round_Hits += Points;
+    Match_Hits += Points;
+    Scores::AddPoints(_Event.Shooter, Points);
+    Top::SetRecord(_Event.Shooter, C_TopHits, TL::ToText(Match_Hits), -Match_Hits);
+    UpdateScoresTable(_Event.Shooter);
+}
+
+Void OnInfect(CSmPlayer _Victim, CSmPlayer _Infector) {
+    if(_Victim == Null)
+        return;
+
+    if(IsInfected(_Victim) || (_Infector != Null && !IsInfected(_Infector))) {
+        log("ERROR: OnInfect is called with already infected victim, or not infected infector!");
+        return;
+    }
+
+    declare netwrite Boolean Net_Infected     for _Victim;
+    declare netwrite Real Net_NearestSurvivor for _Victim;
+
+    declare Ident InfectorId  for _Victim;
+    declare Boolean Infected  for _Victim = S_InfectNewPlayers;
+
+    declare Integer SpawnTime for _Victim;
+
+    declare Text _InfectorLogin = "(null)";
+    if(_Infector != Null) {
+        _InfectorLogin = _Infector.Login;
+    }
+
+    Infected            = True;
+    Net_Infected        = True;
+    Net_NearestSurvivor = 0.0;
+    if(_Infector != Null) {
+        InfectorId = _Infector.Id;
+
+        declare Match_Infections for _Infector = 0;
+        declare Round_Infections for _Infector = 0;
+        Round_Infections += 1;
+        Match_Infections += 1;
+        Top::SetRecord(_Infector, C_TopInfections, TL::ToText(Match_Infections), -Match_Infections);
+
+        if(_Infector.Armor < _Infector.ArmorMax) {
+            _Infector.Armor += S_InfectionArmorBonus;
+        }
+        if(S_RewardInfectors > 0) {
+            RewardInfector(_Infector, S_InfectionScore * S_RewardInfectors);
+        }
+
+        Scores::AddPoints(_Infector, S_InfectionScore);
+        UpdateScoresTable(_Infector);
+
+        ScoresTable::SetFooterStats(_Victim, "Infected by: " ^ _Infector.Name);
+
+        // Notify everyone about infection
+        //Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), 4000, 1);
+        //Message::SendBigMessage(_Victim, "$360Infected!", 4000, 1);
+    }
+
+    G_InfectedPlayerCount += 1;
+
+    if(_Victim.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
+        if(S_RespawnOnInfection) {
+            UnspawnPlayer(_Victim);
+        } else {
+            InitInfected(_Victim);
+            SetupInfectedWeapons(_Victim);
+        }
+    }
+
+    ScoresTable::SetCustom1(_Victim, C_TxtInfected);
+    declare SurvivalTime = SpawnTime - Now;
+    if(SurvivalTime < 0) {
+        SurvivalTime = 0;
+    }
+    // Set survival time
+    ScoresTable::SetCustom2(_Victim, TL::TimeToText(SurvivalTime, True));
+
+    RewardSurvivorsForSurvivingInfection();
+
+    // SendNotice to all players about infection
+    if(_Infector != Null) {
+        foreach(Player in AllPlayers) {
+            declare Text Message;
+            if(Player == _Infector) {
+                Message = TL::Compose(C_TxtYouInfectedA, _Victim.Name);
+            } else if (Player == _Victim) {
+                Message = TL::Compose(C_TxtAInfectedYou, _Infector.Name);
+            } else {
+                Message = TL::Compose(C_TxtAInfectedB, _Infector.Name, _Victim.Name);
+            }
+            UIManager.GetUI(Player).SendNotice(
+                Message,
+                CUIConfig::ENoticeLevel::PlayerInfo,
+                _Infector.User,
+                CUIConfig::EAvatarVariant::Default,
+                CUIConfig::EUISound::PlayerHit,
+                0
+            );
+        }
+    }
+
+    if(G_InfectedPlayerCount == Players.count - 1) {
+        // Get last survivor
+        declare CSmPlayer LastSurvivor = Null;
+        foreach(Player in Players) {
+            if(!IsInfected(Player)) {
+                LastSurvivor = Player;
+                break;
+            }
+        }
+        if(LastSurvivor != Null) {
+            Message::SendBigMessage(
+                TL::Compose(
+                    "%1$z$s is the last survivor!",
+                    LastSurvivor.Name
+                ),
+                C_LastSurvivorMsgDuration,
+                C_LastSurvivorMsgPriority
+            );
+        }
+    }
+
+    UpdateModeStatusMessage();
+}
+
+Void ManageInfectedPlayer(CSmPlayer _Infected) {
+    declare netwrite Net_NearestSurvivor for _Infected = 0.0;
+    declare MinDetectDist = S_SurvivorDetectorMaxDist;
+    foreach(Survivor in Players) {
+        if(Survivor.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned)
+            continue;
+        if(IsInfected(Survivor))
+            continue;
+        declare Real Distance = ML::Distance(Survivor.Position, _Infected.Position);
+        if(Distance < S_InfectionDistance) {
+            OnInfect(Survivor, _Infected);
+        }
+        if(Distance < MinDetectDist) {
+            MinDetectDist = Distance;
+        }
+    }
+    Net_NearestSurvivor = 1.0 - MinDetectDist / S_SurvivorDetectorMaxDist;
+}
+
+Void ManageMapLeaver(CSmPlayer _Player) {
+    if(S_CanLeaveMapFor < 0) {
+        return;
+    }
+    declare Integer LeftMapSince for _Player = -1;
+    declare PlayerUI <=> UIManager.GetUI(_Player);
+    if(_Player.Position.X     < 0
+    || _Player.Position.Z     < 0
+    || _Player.Position.X / 8 > Map.Size.X
+    || _Player.Position.Z / 8 > Map.Size.Z)
+    {
+        if(LeftMapSince == -1) {
+            LeftMapSince = Now;
+        }
+        if(Now - LeftMapSince < S_CanLeaveMapFor) {
+            PlayerUI.BigMessage    = C_TxtGetBackToBattleField;
+            PlayerUI.StatusMessage = TL::Compose(C_TxtYouWillBeInfectedInX, TL::ToText(S_CanLeaveMapFor / 1000 - ML::FloorInteger((Now - LeftMapSince) / 1000.0)));
+        } else {
+            OnInfect(_Player, Null);
+        }
+    } else if(LeftMapSince != -1) {
+        LeftMapSince = -1;
+        PlayerUI.BigMessage    = "";
+        PlayerUI.StatusMessage = "";
+    }
+}
+
+Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
+    declare Tags = TL::Split("_", _Spawn.Tag);
+    //declare Gauge <=> _Spawn.Gauge;
+
+    declare Boolean IsCommonSpawn = False;
+    if(Tags.count == 2) {
+        switch(Tags[1]) {
+            case "Infected": 
             {
-                SetPlayerAmmoMax(Player, CSmMode::EWeapon::Rocket, 0);
+                G_InfectedSpawns.add(_Spawn);
+                //Gauge.Clan = C_InfectedClanNum;
+            }
+            case "Survivor":
+            {
+                G_SurvivorSpawns.add(_Spawn);
+                //Gauge.Clan = C_SurvivorClanNum;
+            }
+            default: IsCommonSpawn = True;
+        }
+    } else {
+        IsCommonSpawn = True;
+    }
+    if(IsCommonSpawn) {
+        // Add to both lists, because it's common spawn
+        G_InfectedSpawns.add(_Spawn);
+        G_SurvivorSpawns.add(_Spawn);
+        //Gauge.Clan = 0;
+    }
+}
+
+Boolean SetupGateConditions(CSmMapLandmark _Gate) {
+    declare Text[] Split;
+    declare Integer[][] Conditions for _Gate;
+    declare Boolean DefaultOpened  for _Gate = False;
+    declare Boolean UpdateAlways   for _Gate = False;
+
+    Split = TL::Split("_", _Gate.Tag);
+    if(Split.count != 2) {
+        return False;
+    }
+    if(Split[0] != "Gate") {
+        return False;
+    }
+
+    Split = TL::Split(":", Split[1]);
+    if(Split.count != 3) {
+        return False;
+    }
+
+    UpdateAlways  = Split[0] == "A";
+    DefaultOpened = Split[1] == "O";
+
+    declare Text[] SplitOR = TL::Split("|", Split[2]);
+    foreach(ORConds in SplitOR) {
+        declare Text[] SplitAND = TL::Split("&", ORConds);
+        foreach(Cond in SplitAND) {
+            declare Integer CCountSource = -1;
+            declare Integer CComparison  = -1;
+            declare Integer CValue       = -1;
+            while(True) {
+                Split = TL::Split("<", Cond);
+                if(Split.count == 2) {
+                    CComparison = C_CondGateComparison_LT;
+                    break;
+                }
+                Split = TL::Split("=", Cond);
+                if(Split.count == 2) {
+                    CComparison = C_CondGateComparison_EQ;
+                    break;
+                }
+                Split = TL::Split(">", Cond);
+                if(Split.count == 2) {
+                    CComparison = C_CondGateComparison_GT;
+                    break;
+                }
+                break;
+            }
+            if(CComparison == -1) {
+                log(C_CondGate_TxtPrefix ^ "Invalid comparison `" ^ Cond ^ "` in conditional gate: " ^ _Gate.Tag);
+                continue;
+            }
+            switch(Split[0]) {
+                case C_CondGateCountSource_TxtPlayers   : CCountSource = C_Condition_Count_Players;
+                case C_CondGateCountSource_TxtSurvivors : CCountSource = C_Condition_Count_Survivors;
+                case C_CondGateCountSource_TxtInfected  : CCountSource = C_Condition_Count_Infected;
+            }
+            if(CCountSource == -1) {
+                log(C_CondGate_TxtPrefix ^ "Invalid count source `" ^ Split[0] ^ "` in conditional gate: " ^ _Gate.Tag);
+                continue;
+            }
+            if(!UpdateAlways && (CCountSource == C_CondGateCountSource_Survivors || CCountSource == C_Condition_Count_Infected)) {
+                log(C_CondGate_TxtPrefix ^ "Warning condition dependednt on count source `" ^ Split[0] ^ "` makes no sense if updating only on round start!");
+            }
+            CValue = TL::ToInteger(Split[1]);
+            if(CValue == -1) {
+                log(C_CondGate_TxtPrefix ^ "Invalid count source `" ^ Split[1] ^ "` in conditional gate: " ^ _Gate.Tag);
+                continue;
+            }
+            Conditions.add([CCountSource, CComparison, CValue, C_CondGateChain_AND]);
+        }
+        if(Conditions.count > 0) {
+            Conditions[Conditions.count - 1][C_CondGateChain] = C_Condition_Chain_OR;
+        }
+    }
+
+    return Conditions.count > 0;
+}
+
+Integer GetConditionalCount(Integer _Source) {
+    switch(_Source) {
+        case C_CondGateCountSource_Players   : return Players.count;
+        case C_CondGateCountSource_Survivors : return Players.count - G_InfectedPlayerCount;
+        case C_CondGateCountSource_Infected  : return G_InfectedPlayerCount;
+    }
+    return 0;
+}
+
+Boolean Compare(Integer _Count, Integer _Comparison, Integer _Value) {
+    switch(_Comparison) {
+        case C_CondGateComparison_LT : return _Count < _Value;
+        case C_CondGateComparison_EQ : return _Count == _Value;
+        case C_CondGateComparison_GT : return _Count > _Value;
+    }
+    return False;
+}
+
+Void SetupConditionalGate(CSmMapLandmark _Gate) {
+    declare Gate  <=> _Gate.Gate;
+    declare Gauge <=> _Gate.Gauge;
+
+    Gate.Automatic = False;
+    Gate.Clan      = C_InfectedClanNum;
+    Gauge.Clan     = C_InfectedClanNum;
+    Gauge.Speed    = 0;
+}
+
+Void UpdateGateStatus(CSmMapLandmark _Gate) {
+    declare Integer[][] Conditions for _Gate;
+    declare Boolean DefaultOpened  for _Gate = False;
+    declare Boolean UpdateAlways   for _Gate = False;
+
+    declare Gate  <=> _Gate.Gate;
+    declare Gauge <=> _Gate.Gauge;
+
+    declare Boolean Result = False;
+    declare Integer PrevChain = -1;
+    foreach(Condition in Conditions) {
+        declare CurrentResult = Compare(
+            GetConditionalCount(Condition[C_CondGateCountSource]),
+            Condition[C_CondGateComparison],
+            Condition[C_CondGateValue]
+        );
+        if(PrevChain == -1) {
+            // Initialize result
+            Result = CurrentResult;
+        } else {
+            // Chain the result
+            switch(Condition[C_CondGateChain]) {
+                case C_CondGateChain_AND : Result = Result && CurrentResult;
+                case C_CondGateChain_OR  : Result = Result || CurrentResult;
+                default: Result = False;
             }
         }
     }
 
-    UpdateMSM();
-
-    ScoresTable::SetCustom1(Player, C_Infected);
-    UpdateCounts();
-    if (SpawnTime < Now && SpawnTime > 0)
-    {
-        ScoresTable::SetCustom2(Player, TL::TimeToText(Now - SpawnTime, True));
-    }
-    else
-    {
-        ScoresTable::SetCustom2(Player, "???");
-    }
-    foreach (Player in AllPlayers)
-    {
-        declare Infected for Player = False;
-        if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned && !Infected)
-        {
-            declare SurvivalScore for Player = 0;
-            if (Player.Score != Null)
-            {
-                declare Match_SurvivalScore for Player = 0;
-                Match_SurvivalScore += 1;
-                Top::SetRecord(Player, "SurvivalScore", TL::ToText(Match_SurvivalScore), -Match_SurvivalScore);
-            }
-            SurvivalScore += 1;
-            Scores::AddPoints(Player, S_SurvivalScore);
-            if (NbInfected >= NbPlayers - 1)
-            {
-                Scores::AddPoints(Player, ML::CeilingInteger(SurvivalScore * 0.5));
-            }
-            UpdateScoresTable(Player);
-        }
-    }
-}
-
-Void DoSnowballing(CSmPlayer _Player, Integer Score)
-{
-    declare Ident Infecter for _Player = NullId;
-
-    if (Infecter != NullId && Players.existskey(Infecter))
-    {
-        declare Player = Players[Infecter];
-
-        Scores::AddPoints(Player, Score);
-
-        if (Score > 1)
-        {
-            DoSnowballing(Player, Score / 2);
-        }
-    }
-}
-
-Void InfectRandomSurvivor()
-{
-    declare Ident[] Survivors;
-
-    foreach (Player in Players)
-    {
-        if (!IsInfected(Player))
-        {
-            Survivors.add(Player.Id);
-        }
+    declare Open = DefaultOpened;
+    if(Result) {
+        // Toggle `Open` status if the conditiona result is True
+        Open = !Open;
     }
 
-    foreach (Bot in BotPlayers)
-    {
-        if (!IsInfected(Bot))
-        {
-            Survivors.add(Bot.Id);
-        }
+    if(Open) {
+        Gauge.ValueReal = 0.0;
+    } else {
+        Gauge.ValueReal = 1.0;
     }
-
-    if (Survivors.count > 0)
-    {
-        Infect(AllPlayers[Survivors[ML::Rand(0, Survivors.count - 1)]], Null);
-    }
-}
-
-Void InfectLogin(Text Login)
-{
-    foreach (Player, Players)
-    {
-        if (Player.Login == Login)
-        {
-            if (!IsInfected(Player))
-            {
-                declare Victim = Player;
-                +++OnInfect+++
-                Infect(Player, Null);
-            }
-        }
-    }
+    Gauge.Captured = !Open;
+    Gate.ManualClosed = !Open;
 }
 
