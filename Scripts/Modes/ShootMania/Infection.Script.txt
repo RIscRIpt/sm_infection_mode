@@ -1,7 +1,7 @@
 #Extends "Modes/ShootMania/ModeBase.Script.txt"
 
 #Const Version    "2017-02-22"
-#Const ScriptName "InfectionV2"
+#Const ScriptName "Infection.Script.txt"
 
 #Include "TextLib" as TL
 #Include "MathLib" as ML
@@ -1340,7 +1340,7 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
     declare Boolean IsCommonSpawn = False;
     if(Tags.count == 2) {
         switch(Tags[1]) {
-            case "Infected": 
+            case "Infected":
             {
                 G_InfectedSpawns.add(_Spawn);
                 //Gauge.Clan = C_InfectedClanNum;
