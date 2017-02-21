@@ -144,8 +144,11 @@
 #Const   C_Cond_Comparison_EQ               1
 #Const   C_Cond_Comparison_GT               2
 
+#Const   C_Cond_Chain_None                  -1
 #Const   C_Cond_Chain_AND                   0
 #Const   C_Cond_Chain_OR                    1
+
+#Const   C_UnexpectedBehaviour              "Unexpected behaviour!\nThis must not happen!\nWhere: %1\nData: %2"
 
 /* -------------------------------------- */
 // Globals
@@ -498,7 +501,7 @@ if(EndTime > -1 && EndTime <= Now) {
             }
         } else {
             // This must not happen
-            log("First infected suddenly disappeared, this must not happen!");
+            log(TL::Compose(C_UnexpectedBehaviour, "Choosing first infected", "Null"));
             MB_StopRound();
         }
     } else {
@@ -852,9 +855,9 @@ CSmPlayer GetFirstInfected() {
         }
     }
 
-    log("this must not happen! No random player was chosen!");
+    // This must not happen
+    log(TL::Compose(C_UnexpectedBehaviour, "GetFirstInfected", "" ^ RandomNum));
     if(Players.count > 0) {
-        log("choosing first one");
         G_FirstInfectedId = Players[0].Id;
         return Players[0];
     }
@@ -1340,6 +1343,9 @@ Boolean SetupLandmarkConditions(CSmMapLandmark _Landmark, Text _TextConditions) 
             Conditions[Conditions.count - 1][C_Cond_Chain] = C_Cond_Chain_OR;
         }
     }
+    if(Conditions.count > 0) {
+        Conditions[Conditions.count - 1][C_Cond_Chain] = C_Cond_Chain_None;
+    }
 
     return Conditions.count > 0;
 }
@@ -1439,24 +1445,25 @@ Boolean Compare(Integer _Count, Integer _Comparison, Integer _Value) {
 
 Boolean ConditionsAreSatisfied(Integer[][] _Conditions) {
     declare Boolean Result = False;
-    declare Integer PrevChain = -1;
+    declare Integer PrevChain = C_Cond_Chain_None;
     foreach(Condition in _Conditions) {
         declare CurrentResult = Compare(
             GetConditionalCount(Condition[C_Cond_CountSource]),
             Condition[C_Cond_Comparison],
             Condition[C_Cond_Value]
         );
-        if(PrevChain == -1) {
-            // Initialize result
-            Result = CurrentResult;
-        } else {
-            // Chain the result
-            switch(Condition[C_Cond_Chain]) {
-                case C_Cond_Chain_AND : Result = Result && CurrentResult;
-                case C_Cond_Chain_OR  : Result = Result || CurrentResult;
-                default: Result = False;
+        switch(PrevChain) {
+            case C_Cond_Chain_AND : Result = Result && CurrentResult;
+            case C_Cond_Chain_OR  : Result = Result || CurrentResult;
+            case C_Cond_Chain_None: Result = CurrentResult;
+            default:
+            {
+                // This must not happen
+                log(TL::Compose(C_UnexpectedBehaviour, "ConditionsAreSatisfied", "" ^ PrevChain));
+                Result = False;
             }
         }
+        PrevChain = Condition[C_Cond_Chain];
     }
     return Result;
 }
