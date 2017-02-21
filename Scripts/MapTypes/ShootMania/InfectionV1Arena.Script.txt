@@ -23,15 +23,17 @@ Void UpdateValidability() {
     declare Integer SurvivorSpawns = 0;
 
     foreach(Anchor in AnchorData) {
-        declare Tags = TL::Split("_", Anchor.Tag);
-        switch(Tags[0]) {
+        declare Text[] Split;
+        Split = TL::Split("_", Anchor.Tag);
+        switch(Split[0]) {
             case "Spawn":
             {
-                if(Tags.count == 2) {
-                    switch(Tags[1]) {
-                        case "Infected": InfectedSpawns += 1;
-                        case "Survivor": SurvivorSpawns += 1;
-                        default:         CommonSpawns += 1;
+                if(Split.count > 1) {
+                    Split = TL::Split(":", Split[1]);
+                    switch(Split[0]) {
+                        case "I": InfectedSpawns += 1;
+                        case "S": SurvivorSpawns += 1;
+                        default:  CommonSpawns += 1;
                     }
                 } else {
                     CommonSpawns += 1;
