@@ -1580,6 +1580,8 @@ Text GenerateManialink() {
         {{{Manialink::Includes(["TextLib" => "TL", "MathLib" => "ML"])}}}
         {{{Manialink::Animations(["EaseInOutQuad"])}}}
         main() {
+            wait(InputPlayer != Null);
+
             declare netread Net_InfectedCount   for Teams[0] = 0;
             declare netread Net_PlayerCount     for Teams[0] = 0;
             declare netread Net_Infected        for InputPlayer = False;
