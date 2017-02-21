@@ -1375,7 +1375,7 @@ Void SetupConditionalGate(CSmMapLandmark _Gate) {
 
     Gate.Automatic    = False;
     Gate.ManualClosed = True;
-    Gate.Clan         = C_InfectedClanNum;
+    Gate.Clan         = 0;
     Gauge.Clan        = 0;
     Gauge.Speed       = 0;
 }
