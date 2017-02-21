@@ -507,13 +507,6 @@ if(EndTime > -1 && EndTime <= Now) {
     }
 }
 
-if((InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
-    // Don't end the round if not enough players
-    if(Players.count >= C_MinimalPlayerCount) {
-        MB_StopRound();
-    }
-}
-
 foreach(Event in PendingEvents) {
     switch(Event.Type) {
         case CSmModeEvent::EType::OnHit:
@@ -628,6 +621,13 @@ if(PlayerCountChanged) {
         UpdateGateStatus(Gate, False);
     }
     UpdateModeStatusMessage();
+}
+
+if((InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
+    // Don't end the round if not enough players
+    if(Players.count >= C_MinimalPlayerCount) {
+        MB_StopRound();
+    }
 }
 
 ***
