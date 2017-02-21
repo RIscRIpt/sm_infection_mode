@@ -125,7 +125,7 @@
 #Const   C_StaminaMinGain                   0.0
 #Const   C_StaminaMaxGain                   1.0
 
-#Const   C_Cond_TxtPrefix                   "$f00[CondGates] $z$s"
+#Const   C_Cond_TxtPrefix                   "$f00[CondLandmark] $z$s"
 
 #Const   C_Cond_CountSource                 0
 #Const   C_Cond_Comparison                  1
@@ -981,7 +981,9 @@ Void SetupInfectedWeapons(CSmPlayer _Player) {
         }
     }
 
-    SetPlayerAmmo(_Player, CSmMode::EWeapon::Rocket, GetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket));
+    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
+        SetPlayerAmmo(_Player, CSmMode::EWeapon::Rocket, GetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket));
+    }
     if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
         SetPlayerWeapon(_Player, CSmMode::EWeapon::Rocket, True);
     }
@@ -1374,17 +1376,23 @@ Void SetupConditionalGate(CSmMapLandmark _Gate) {
     Gate.Automatic    = False;
     Gate.ManualClosed = True;
     Gate.Clan         = C_InfectedClanNum;
-    Gauge.Clan        = C_InfectedClanNum;
+    Gauge.Clan        = 0;
     Gauge.Speed       = 0;
 }
 
 Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
-    declare Split = TL::Split(":", _Spawn.Tag);
+    declare Text[] Split;
     //declare Gauge <=> _Spawn.Gauge;
+
+    Split = TL::Split("_", _Spawn.Tag);
+    if(Split[0] != "Spawn") {
+        return;
+    }
 
     declare Boolean IsCommonSpawn = False;
     if(Split.count > 1) {
-        switch(Split[1]) {
+        Split = TL::Split(":", Split[1]);
+        switch(Split[0]) {
             case "I":
             {
                 G_InfectedSpawns.add(_Spawn);
@@ -1397,8 +1405,8 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
             }
             default: IsCommonSpawn = True;
         }
-        if(Split.count > 2) {
-            SetupLandmarkConditions(_Spawn, Split[2]);
+        if(Split.count > 1) {
+            SetupLandmarkConditions(_Spawn, Split[1]);
         }
     } else {
         IsCommonSpawn = True;
