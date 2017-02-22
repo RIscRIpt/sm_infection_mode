@@ -132,13 +132,13 @@
 #Const   C_Cond_Value                       2
 #Const   C_Cond_Chain                       3
 
-#Const   C_Cond_CountSource_TxtPlayers      "P"
-#Const   C_Cond_CountSource_TxtSurvivors    "S"
-#Const   C_Cond_CountSource_TxtInfected     "I"
+#Const   C_Cond_TxtPlayers                  "P"
+#Const   C_Cond_TxtSurvivors                "S"
+#Const   C_Cond_TxtInfected                 "I"
 
-#Const   C_Cond_CountSource_Players         0
-#Const   C_Cond_CountSource_Survivors       1
-#Const   C_Cond_CountSource_Infected        2
+#Const   C_Cond_Players                     0
+#Const   C_Cond_Survivors                   1
+#Const   C_Cond_Infected                    2
 
 #Const   C_Cond_Comparison_LT               0
 #Const   C_Cond_Comparison_EQ               1
@@ -147,6 +147,18 @@
 #Const   C_Cond_Chain_None                  -1
 #Const   C_Cond_Chain_AND                   0
 #Const   C_Cond_Chain_OR                    1
+
+#Const   C_MapSetting_WaterProperty_TxtNone         "N"
+#Const   C_MapSetting_WaterProperty_TxtEliminates   "E"
+#Const   C_MapSetting_WaterProperty_TxtProtects     "P"
+#Const   C_MapSetting_WaterProperty_TxtInfects      "I"
+#Const   C_MapSetting_WaterProperty_TxtHeals        "H"
+
+#Const   C_MapSetting_WaterProperty_None            0
+#Const   C_MapSetting_WaterProperty_Eliminates      1
+#Const   C_MapSetting_WaterProperty_Protects        2
+#Const   C_MapSetting_WaterProperty_Infects         4
+#Const   C_MapSetting_WaterProperty_Heals           8
 
 #Const   C_UnexpectedBehaviour              "Unexpected behaviour!\nThis must not happen!\nWhere: %1\nData: %2"
 
@@ -163,6 +175,10 @@ declare CSmMapLandmark[] G_CondGates_Up_EachRound;
 
 declare CSmMapLandmark[] G_SurvivorSpawns;
 declare CSmMapLandmark[] G_InfectedSpawns;
+
+declare Integer G_MapSetting_WaterForPlayers;
+declare Integer G_MapSetting_WaterForSurvivors;
+declare Integer G_MapSetting_WaterForInfected;
 
 ***InitServer***
 ***
@@ -258,6 +274,10 @@ OffZoneRadius = -1.0;
 G_CondGates_Up_Always.clear();
 G_CondGates_Up_EachRound.clear();
 
+G_MapSetting_WaterForPlayers   = C_MapSetting_WaterProperty_None;
+G_MapSetting_WaterForSurvivors = C_MapSetting_WaterProperty_None;
+G_MapSetting_WaterForInfected  = C_MapSetting_WaterProperty_None;
+
 foreach(Landmark in MapLandmarks) {
     declare Tags = TL::Split("_", Landmark.Tag);
     switch(Tags[0]) {
@@ -281,6 +301,12 @@ foreach(Landmark in MapLandmarks) {
                 else
                     G_CondGates_Up_EachRound.add(Landmark);
                 SetupConditionalGate(Landmark);
+            }
+        }
+        case "Settings":
+        {
+            if(Tags.count > 1) {
+                SetupMapSettings(Tags[2]);
             }
         }
     }
@@ -445,6 +471,10 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
             continue;
         }
 
+        if(Player.IsInWater) {
+            ManageMapWaterEffects(Player);
+        }
+
         if(IsInfected(Player)) {
             // Infected
 
@@ -514,7 +544,9 @@ foreach(Event in PendingEvents) {
     switch(Event.Type) {
         case CSmModeEvent::EType::OnHit:
         {
-            if(Event.Shooter == Event.Victim) {
+            if(Event.Shooter == Event.Victim
+            || IsProtectedByMapWater(Event.Victim))
+            {
                 Discard(Event);
                 continue;
             }
@@ -1085,6 +1117,24 @@ Void RewardSurvivorsForSurvivingInfection() {
     }
 }
 
+Integer GetPlayerMapWaterEffects(CSmPlayer _Player) {
+    if(_Player == Null)
+        return C_MapSetting_WaterProperty_None;
+
+    if(!_Player.IsInWater)
+        return C_MapSetting_WaterProperty_None;
+
+    if(IsInfected(_Player))
+        return G_MapSetting_WaterForInfected;
+    else
+        return G_MapSetting_WaterForSurvivors;
+}
+
+Boolean IsProtectedByMapWater(CSmPlayer _Player) {
+    declare Integer Effects = GetPlayerMapWaterEffects(_Player);
+    return (Effects & C_MapSetting_WaterProperty_Protects) != 0;
+}
+
 Void OnHit(CSmModeEvent _Event, Integer _Multiplier) {
     declare Match_Hits for _Event.Shooter = 0;
     declare Round_Hits for _Event.Shooter = 0;
@@ -1202,6 +1252,24 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
     }
 }
 
+Void ManageMapWaterEffects(CSmPlayer _Player) {
+    declare Integer Effects = GetPlayerMapWaterEffects(_Player);
+    if(Effects & C_MapSetting_WaterProperty_Eliminates) {
+        UnspawnPlayer(_Victim);
+    }
+    if(Effects & C_MapSetting_WaterProperty_Infects) {
+        if(!IsInfected(_Player))
+            Infect(_Player);
+    }
+    if(Effects & C_MapSetting_WaterProperty_Heals) {
+        // TODO: start heal
+    } else {
+        // TODO: stop heal
+    }
+    //if(Effects & C_MapSetting_WaterProperty_Protects) {
+    //}
+}
+
 Boolean InfectsByDistance(Vec3 _P1, Vec3 _P2) {
     return ML::Abs(_P1.X - _P2.X) <= S_HorizontalInfectionDistance &&
            ML::Abs(_P1.Y - _P2.Y) <= S_VerticalInfectionDistance &&
@@ -1217,7 +1285,8 @@ Void ManageInfectedPlayer(CSmPlayer _Infected) {
         if(IsInfected(Survivor))
             continue;
         if(InfectsByDistance(Survivor.Position, _Infected.Position)) {
-            Infect(Survivor, _Infected);
+            if(!IsProtectedByMapWater(Survivor))
+                Infect(Survivor, _Infected);
         }
         declare Real Distance = ML::Distance(Survivor.Position, _Infected.Position);
         if(Distance < MinDetectDist) {
@@ -1324,9 +1393,9 @@ Boolean SetupLandmarkConditions(CSmMapLandmark _Landmark, Text _TextConditions) 
                 continue;
             }
             switch(Split[0]) {
-                case C_Cond_CountSource_TxtPlayers   : CCountSource = C_Cond_CountSource_Players;
-                case C_Cond_CountSource_TxtSurvivors : CCountSource = C_Cond_CountSource_Survivors;
-                case C_Cond_CountSource_TxtInfected  : CCountSource = C_Cond_CountSource_Infected;
+                case C_Cond_TxtPlayers   : CCountSource = C_Cond_Players;
+                case C_Cond_TxtSurvivors : CCountSource = C_Cond_Survivors;
+                case C_Cond_TxtInfected  : CCountSource = C_Cond_Infected;
             }
             if(CCountSource == -1) {
                 ConditionError("Invalid count source `" ^ Split[0] ^ "` in condition: " ^ _TextConditions);
@@ -1425,11 +1494,50 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
     }
 }
 
+Integer GetWaterProperty(Text _TxtProperty) {
+    switch(_TxtProperty) {
+        case C_MapSetting_WaterProperty_TxtEliminates : return C_MapSetting_WaterProperty_Eliminates;
+        case C_MapSetting_WaterProperty_TxtProtects   : return C_MapSetting_WaterProperty_Protects;
+        case C_MapSetting_WaterProperty_TxtInfects    : return C_MapSetting_WaterProperty_Infects;
+        case C_MapSetting_WaterProperty_TxtHeals      : return C_MapSetting_WaterProperty_Heals;
+    }
+    return C_MapSetting_WaterProperty_None;
+}
+
+Void SetupMapWaterProperties(Text _TxtProperty) {
+    declare Text[] Args = TL::Split("=", _TxtProperty);
+    if(Args.count != 2)
+        return;
+
+    declare Integer PropertyValue = GetWaterProperty(Arg[1]);
+    switch(Args[0]) {
+        case C_Cond_Players   : G_MapSetting_WaterForPlayers   |= PropertyValue;
+        case C_Cond_Survivors : G_MapSetting_WaterForSurvivors |= PropertyValue;
+        case C_Cond_Infected  : G_MapSetting_WaterForInfected  |= PropertyValue;
+    }
+
+    // Combine specific flags with common to speedup checks
+    G_MapSetting_WaterForSurvivors |= G_MapSetting_WaterForPlayers;
+    G_MapSetting_WaterForInfected  |= G_MapSetting_WaterForPlayers;
+}
+
+Void SetupMapSettings(Text _TxtSettings) {
+    //Settings_W:I=D;W:S=E;
+
+    declare Text[] Settings = TL::Split(";", _TxtSettings);
+    foreach(Setting in Settings) {
+        declare Text[] Args = TL::Split(":", Setting);
+        switch(Args[0]) {
+            case "W": SetupMapWaterProperties(Args[1]);
+        }
+    }
+}
+
 Integer GetConditionalCount(Integer _Source) {
     switch(_Source) {
-        case C_Cond_CountSource_Players   : return Players.count;
-        case C_Cond_CountSource_Survivors : return Players.count - G_InfectedPlayerCount;
-        case C_Cond_CountSource_Infected  : return G_InfectedPlayerCount;
+        case C_Cond_Players   : return Players.count;
+        case C_Cond_Survivors : return Players.count - G_InfectedPlayerCount;
+        case C_Cond_Infected  : return G_InfectedPlayerCount;
     }
     return 0;
 }
