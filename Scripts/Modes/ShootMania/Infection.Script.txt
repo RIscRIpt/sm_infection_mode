@@ -107,7 +107,9 @@
 #Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
 #Const   C_TxtAInfectedB                    "%1 $z$sinfected %2"
 
-#Const   C_PlayerDrowned                    "$z$s drowned in water!"
+#Const   C_TxtPlayerDrowned                 "$z$s drowned in water!"
+#Const   C_TxtPlayerInfectedByWater         "%1 $z$swas infected by water!"
+#Const   C_TxtPlayerWasEliminated           "%1 $z$swas very curious and got aids!"
 
 #Const   C_TxtAllPlayersInfected            "All players are infected!"
 #Const   C_TxtTimeLimitReached              "Time limit reached!"
@@ -121,6 +123,7 @@
 #Const   C_LastSurvivorMsgPriority          2
 
 #Const   C_ArmorUnit                        100
+#Const   C_ArmorReplenishGain               300
 
 #Const   C_StaminaRealUnit                  1.0
 #Const   C_StaminaIntUnit                   3600
@@ -173,6 +176,8 @@ declare CSmMapLandmark[] G_SurvivorSpawns;
 declare CSmMapLandmark[] G_InfectedSpawns;
 
 // No bitfield operations, so declaring bunch of booleans
+declare Boolean G_MapSetting_WaterHasEffects;
+
 declare Boolean G_MapSetting_WaterForSurvivors_Eliminates;
 declare Boolean G_MapSetting_WaterForSurvivors_Protects;
 declare Boolean G_MapSetting_WaterForSurvivors_Infects;
@@ -275,6 +280,8 @@ G_SurvivorSpawns.clear();
 OffZoneRadius = -1.0;
 G_CondGates_Up_Always.clear();
 G_CondGates_Up_EachRound.clear();
+
+G_MapSetting_WaterHasEffects              = False;
 
 G_MapSetting_WaterForSurvivors_Eliminates = False;
 G_MapSetting_WaterForSurvivors_Protects   = False;
@@ -481,7 +488,7 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
         if(IsInfected(Player)) {
             // Infected
 
-            if(Player.IsInWater) {
+            if(G_MapSetting_WaterHasEffects) {
                 ManageMapWaterEffectsForInfected(Player);
             }
 
@@ -495,7 +502,7 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
         } else {
             // Survivor
 
-            if(Player.IsInWater) {
+            if(G_MapSetting_WaterHasEffects) {
                 ManageMapWaterEffectsForSurvivor(Player);
             }
 
@@ -530,7 +537,7 @@ if(EndTime > -1 && EndTime <= Now) {
 
         declare FirstInfected = GetFirstInfected();
         if(FirstInfected != Null) {
-            Infect(FirstInfected, Null);
+            Infect(FirstInfected);
 
             Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
             Message::SendBigMessage(FirstInfected, "$360First Infected!", 4000, 1);
@@ -1134,7 +1141,7 @@ Void OnHit(CSmModeEvent _Event, Integer _Multiplier) {
     UpdateTableScores(_Event.Shooter);
 }
 
-Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
+Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
     if(_Victim == Null)
         return;
 
@@ -1216,6 +1223,15 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
                 0
             );
         }
+    } else if(_CauseFmt != "") {
+        UIManager.UIAll.SendNotice(
+            TL::Compose(_CauseFmt, _Victim.Name),
+            CUIConfig::ENoticeLevel::PlayerInfo,
+            _Victim.User,
+            CUIConfig::EAvatarVariant::Default,
+            CUIConfig::EUISound::PlayerHit,
+            0
+        );
     }
 
     if(G_InfectedPlayerCount == Players.count - 1) {
@@ -1240,13 +1256,25 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
     }
 }
 
+Void Infect(CSmPlayer _Victim, Text _CauseFmt) {
+    Infect(_Victim, Null, _CauseFmt);
+}
+
+Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
+    Infect(_Victim, _Infector, "");
+}
+
+Void Infect(CSmPlayer _Victim) {
+    Infect(_Victim, Null);
+}
+
 Void EliminateByWater(CSmPlayer _Player) {
     if(_Player == Null)
         return;
 
     UnspawnPlayer(_Player);
     UIManager.UIAll.SendNotice(
-        _Player.Name ^ C_PlayerDrowned,
+        _Player.Name ^ C_TxtPlayerDrowned,
         CUIConfig::ENoticeLevel::PlayerInfo,
         _Player.User,
         CUIConfig::EAvatarVariant::Default,
@@ -1256,40 +1284,46 @@ Void EliminateByWater(CSmPlayer _Player) {
 }
 
 Void ManageMapWaterEffectsForInfected(CSmPlayer _Player) {
-    if(G_MapSetting_WaterForInfected_Eliminates) {
-        EliminateByWater(_Player);
+    declare Boolean WasInWater for _Player = False;
+
+    if(_Player.IsInWater) {
+        if(G_MapSetting_WaterForInfected_Eliminates) {
+            EliminateByWater(_Player);
+        }
+        if(G_MapSetting_WaterForInfected_Heals) {
+            _Player.ArmorReplenishGain = C_ArmorReplenishGain;
+        }
+    } else if(WasInWater) {
+        if(G_MapSetting_WaterForInfected_Heals) {
+            _Player.ArmorReplenishGain = 0;
+        }
     }
 
-    if(G_MapSetting_WaterForSurvivors_Heals) {
-        // TODO: start heal
-    } else {
-        // TODO: stop heal
-    }
-
-    // Implemented as a separate `check` in function `IsProtectedByMap`
-    //if(G_MapSetting_WaterForSurvivors_Protects) {
-    //}
+    WasInWater = _Player.IsInWater;
 }
 
 Void ManageMapWaterEffectsForSurvivor(CSmPlayer _Player) {
-    if(G_MapSetting_WaterForSurvivors_Eliminates) {
-        EliminateByWater(_Player);
+    declare Boolean WasInWater for _Player = False;
+
+    if(_Player.IsInWater) {
+        if(G_MapSetting_WaterForSurvivors_Eliminates) {
+            EliminateByWater(_Player);
+        }
+        if(G_MapSetting_WaterForSurvivors_Infects) {
+            if(!IsInfected(_Player)) {
+                Infect(_Player, C_TxtPlayerInfectedByWater);
+            }
+        }
+        if(G_MapSetting_WaterForSurvivors_Heals) {
+            _Player.ArmorReplenishGain = C_ArmorReplenishGain;
+        }
+    } else if(WasInWater) {
+        if(G_MapSetting_WaterForSurvivors_Heals) {
+            _Player.ArmorReplenishGain = 0;
+        }
     }
 
-    if(G_MapSetting_WaterForSurvivors_Infects) {
-        if(!IsInfected(_Player))
-            Infect(_Player, Null);
-    }
-
-    if(G_MapSetting_WaterForSurvivors_Heals) {
-        // TODO: start heal
-    } else {
-        // TODO: stop heal
-    }
-
-    // Implemented as a separate `check` in function `IsProtectedByMap`
-    //if(G_MapSetting_WaterForSurvivors_Protects) {
-    //}
+    WasInWater = _Player.IsInWater;
 }
 
 Boolean InfectsByDistance(Vec3 _P1, Vec3 _P2) {
@@ -1336,7 +1370,7 @@ Void ManageMapLeaver(CSmPlayer _Player) {
             PlayerUI.BigMessage    = C_TxtGetBackToBattleField;
             PlayerUI.StatusMessage = TL::Compose(C_TxtYouWillBeInfectedInX, TL::ToText(S_CanLeaveMapFor / 1000 - ML::FloorInteger((Now - LeftMapSince) / 1000.0)));
         } else {
-            Infect(_Player, Null);
+            Infect(_Player, C_TxtPlayerWasEliminated);
         }
     } else if(LeftMapSince != -1) {
         LeftMapSince = -1;
@@ -1346,7 +1380,6 @@ Void ManageMapLeaver(CSmPlayer _Player) {
 }
 
 Void ManageIdlePlayer(CSmPlayer _Player) {
-    return;
     if(S_ForceSpecAfter <= 0) {
         return;
     }
@@ -1539,6 +1572,7 @@ Void SetupMapWaterProperties(Text _TxtProperty) {
             }
         }
     }
+    G_MapSetting_WaterHasEffects = True;
 }
 
 Void SetupMapSettings(Text _TxtSettings) {
@@ -1656,6 +1690,13 @@ Void SpawnAndInitPlayer(CSmMapPlayerSpawn _Spawn, CSmPlayer _Player) {
         }
     }
 
+    if(G_MapSetting_WaterForSurvivors_Heals || G_MapSetting_WaterForInfected_Heals) {
+        // Reset ArmorReplenishGain if Player respawned in water,
+        // otherwise player could get an additional armor because of
+        // G_MapSetting_WaterFor..._Heals
+        _Player.ArmorReplenishGain = 0;
+    }
+
     SM::SpawnPlayer(_Player, ClanNum, _Player.Armor, _Spawn, SpawnTime);
 
     // Weapons setup
@@ -1674,7 +1715,7 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players, Boolean _CanInfect) {
     declare CSmMapLandmark[] InfectedSpawns = GetPermittedSpawns(G_InfectedSpawns);
     foreach(Player in _Players) {
         if(_CanInfect && C_InfectOnRespawn && !IsInfected(Player)) {
-            Infect(Player, Null);
+            Infect(Player);
         }
 
         declare CSmMapLandmark[] Spawns;
