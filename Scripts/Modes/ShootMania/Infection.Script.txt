@@ -1444,7 +1444,7 @@ Boolean Compare(Integer _Count, Integer _Comparison, Integer _Value) {
 }
 
 Boolean ConditionsAreSatisfied(Integer[][] _Conditions) {
-    declare Boolean Result = False;
+    declare Boolean Result = True;
     declare Integer PrevChain = C_Cond_Chain_None;
     foreach(Condition in _Conditions) {
         declare CurrentResult = Compare(
