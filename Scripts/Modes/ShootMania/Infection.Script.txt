@@ -938,6 +938,20 @@ Void InitInfected(CSmPlayer _Player) {
     SetupStamina(_Player, S_InfectedStaminaGain, S_InfectedStamina);
 }
 
+Void ForceSetWeapon(CSmPlayer _Player) {
+    if(_Player == Null)
+        return;
+
+    declare Weapon = CSmMode::EWeapon::Rocket;
+
+    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
+        SetPlayerAmmo(_Player, Weapon, GetPlayerAmmoMax(_Player, Weapon));
+    }
+    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
+        SetPlayerWeapon(_Player, Weapon, True);
+    }
+}
+
 Void SetupSurvivorWeapons(CSmPlayer _Player) {
     if(_Player == Null)
         return;
@@ -969,10 +983,7 @@ Void SetupSurvivorWeapons(CSmPlayer _Player) {
         }
     }
 
-    //SetPlayerAmmo(_Player, CSmMode::EWeapon::Rocket, GetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket));
-    //if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
-    //    SetPlayerWeapon(_Player, CSmMode::EWeapon::Rocket, True);
-    //}
+    ForceSetWeapon(_Player);
 }
 
 Void SetupInfectedWeapons(CSmPlayer _Player) {
@@ -1014,12 +1025,7 @@ Void SetupInfectedWeapons(CSmPlayer _Player) {
         }
     }
 
-    //if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
-    //    SetPlayerAmmo(_Player, CSmMode::EWeapon::Rocket, GetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket));
-    //}
-    //if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
-    //    SetPlayerWeapon(_Player, CSmMode::EWeapon::Rocket, True);
-    //}
+    ForceSetWeapon(_Player);
 }
 
 Void UpdateTablePlayerStatus(CSmPlayer _Player) {
