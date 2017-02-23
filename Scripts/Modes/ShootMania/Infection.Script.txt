@@ -16,31 +16,36 @@
 #Include "Libs/Nadeo/ShootMania/SpawnScreen.Script.txt" as SpawnScreen
 #Include "Libs/Nadeo/Manialink.Script.txt" as Manialink
 
-#Setting S_HorizontalInfectionDistance      0.61        as "horizontal infection distance"
-#Setting S_VerticalInfectionDistance        2.16        as "vertical infection distance"
+#Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
+#Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
 #Setting S_InfectionScore                   4           as "infection score"
 #Setting S_InfectionArmorBonus              100         as "armor bonus for infection"
 #Setting S_PVP                              False       as "enable PvP for survivors"
-#Setting S_PursuitMode                      0           as "pursuit mode (0=off, 1=normal ammo, 2=inf ammo)"
+#Setting S_PursuitMode                      False       as "pursuit mode (need round restart)"
 #Setting S_UsePVPCollisions                 False       as "use PvP collisions (need round restart)"
 #Setting S_UseClans                         True        as "use teams (need map restart)"
 #Setting S_UseSameWallJump                  False       as "allow escalator jump (need round restart)"
+#Setting S_RespawnOnInfection               True        as "respawn on infection (need `use teams` == False)"
 #Setting S_HitSurvivorScore                 0           as "hit survivor score (for PvP mode)"
 #Setting S_HitInfectedScore                 1           as "hit infected score"
 #Setting S_ScoreForSurv1Inf                 1           as "score for surviving single infection"
 #Setting S_TimeLimit                        300000      as "time limit for a round"
 #Setting S_ScoreLimit                       100         as "score limit for a match"
 #Setting S_RoundLimit                       0           as "round limit for a match"
-#Setting S_RespawnOnInfection               True        as "respawn on infection"
 #Setting S_InfectedShoot                    1           as "allow first N infected to shoot"
-#Setting S_InfectedWAmmoGain                1.0         as "<hidden>"
-#Setting S_InfectedWLaserMax                0           as "<hidden>"
-#Setting S_InfectedWRocketMax               1           as "<hidden>"
-#Setting S_InfectedWNucleusMax              0           as "<hidden>"
-#Setting S_InfectedWArrowMax                0           as "<hidden>"
+#Setting S_InfectedAmmoGain                 1.0         as "infected ammo gain"
+#Setting S_InfectedLaserMax                 0           as "<hidden>"
+#Setting S_InfectedRocketMax                1           as "infected maximum rockets"
+#Setting S_InfectedNucleusMax               0           as "<hidden>"
+#Setting S_InfectedArrowMax                 0           as "<hidden>"
+#Setting S_SurvivorAmmoGain                 1.0         as "survivor ammo gain"
+#Setting S_SurvivorLaserMax                 1           as "<hidden>"
+#Setting S_SurvivorRocketMax                4           as "survivor maximum rockets"
+#Setting S_SurvivorNucleusMax               1           as "<hidden>"
+#Setting S_SurvivorArrowMax                 2           as "<hidden>"
 #Setting S_PreparationTime                  10000       as "time till first infection"
-#Setting S_InfectNewPlayers                 True        as "infect new players"
-#Setting S_RewardInfectors                  0.5         as "rewarding infected `parent` cooef."
+#Setting S_InfectNewPlayers                 True        as "<hidden>" //as "infect new players"
+#Setting S_RewardInfectors                  0.5         as "<hidden>" //as "rewarding infected `parent` cooef."
 #Setting S_SurvivorStamina                  1.0         as "survivor stamina (0.1-3.0)"
 #Setting S_SurvivorStaminaGain              0.7         as "survivor stamina gain (0.0-1.0,10)"
 #Setting S_InfectedStamina                  2.0         as "infected stamina (0.1-3.0)"
@@ -49,13 +54,14 @@
 #Setting S_SurvivorMaxArmor                 1           as "survivor maximum armor"
 #Setting S_InfectedRespawnArmor             2           as "infected respawn armor"
 #Setting S_InfectedMaxArmor                 2           as "infected maximum armor"
-#Setting S_RewardFirstInfected              0.5         as "<hidden>"
+#Setting S_RewardFirstInfected              0.5         as "<hidden>" //as ""
 #Setting S_SurvivorDetectorMaxDist          20.0        as "survivor detector max distance"
-#Setting S_RespawnDelay                     1000        as "respawn delay"
-#Setting S_CanLeaveMapFor                   3000        as "can leave map for (ms)"
+#Setting S_RespawnDelay                     1000        as "<hidden>" //as "respawn delay"
+#Setting S_CanLeaveMapFor                   3000        as "can leave battlefield for (ms)"
 #Setting S_ForceSpecAfter                   60000       as "force inactive players to spectators after (ms)"
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
-#Setting S_InfectOnPreparationRespawn       False       as "infect on respawn during preparation"
+#Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
+#Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
 
 #Const   C_MinimalPlayerCount               2
 #Const   C_InfectOnRespawn                  True        //as "infect on respawn"
@@ -164,6 +170,9 @@
 /* -------------------------------------- */
 // Globals
 /* -------------------------------------- */
+
+declare Integer G_PrevPlayerProcTime;
+declare Boolean G_InfectionStarted;
 
 declare Ident   G_RoundInfoLayerId;
 declare Integer G_InfectedPlayerCount;
@@ -344,14 +353,11 @@ foreach(Player in Players) {
 
 ***InitRound***
 ***
-declare Integer PrevInfectionTickTime;
-declare Boolean InfectionStarted;
-
-PrevInfectionTickTime = -1;
-InfectionStarted      = False;
+G_PrevPlayerProcTime = -1;
+G_InfectionStarted      = False;
 
 UseSameWallJump  = S_UseSameWallJump;
-UsePvPWeapons    = (S_PursuitMode == 0);
+UsePvPWeapons    = !S_PursuitMode;
 UsePvPCollisions = S_UsePVPCollisions;
 
 MB_UseSectionRound = True;
@@ -433,7 +439,7 @@ declare Boolean Infected      for Player;
 declare Integer SpawnTime     for Player = -1;
 declare Integer InfectionTime for Player = -1;
 
-Infected            = InfectionStarted && S_InfectNewPlayers;
+Infected            = G_InfectionStarted && S_InfectNewPlayers;
 Net_Infected        = Infected;
 Net_NearestSurvivor = 0.0;
 
@@ -471,8 +477,8 @@ if(Layers::IsMissing(C_MainManialinkLayer, Spectator.Id)) {
 
 ***PlayLoop***
 ***
-if(PrevInfectionTickTime + C_InfectionTick < Now) {
-    PrevInfectionTickTime = Now;
+if(G_PrevPlayerProcTime + C_InfectionTick < Now) {
+    G_PrevPlayerProcTime = Now;
 
     declare CSmPlayer[] UnspawnedPlayers;
 
@@ -518,16 +524,16 @@ if(PrevInfectionTickTime + C_InfectionTick < Now) {
     }
 
     if(UnspawnedPlayers.count > 0)
-        SpawnAndInitPlayers(UnspawnedPlayers, InfectionStarted || S_InfectOnPreparationRespawn);
+        SpawnAndInitPlayers(UnspawnedPlayers);
 
     Message::Loop();
     Top::Loop();
 }
 
 if(EndTime > -1 && EndTime <= Now) {
-    if(!InfectionStarted && Players.count >= C_MinimalPlayerCount) {
+    if(!G_InfectionStarted && Players.count >= C_MinimalPlayerCount) {
         // Begin infection round
-        InfectionStarted = True;
+        G_InfectionStarted = True;
 
         if(S_TimeLimit > 0) {
             EndTime = Now + S_TimeLimit;
@@ -537,7 +543,9 @@ if(EndTime > -1 && EndTime <= Now) {
 
         declare FirstInfected = GetFirstInfected();
         if(FirstInfected != Null) {
-            Infect(FirstInfected);
+            if(!IsInfected(FirstInfected)) {
+                Infect(FirstInfected);
+            }
 
             Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
             Message::SendBigMessage(FirstInfected, "$360First Infected!", 4000, 1);
@@ -644,6 +652,26 @@ if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
         }
     }
 
+    // If someone got infected before first infected
+    // and S_ForceFirstInfected is False, then remember the first infected
+    // and force the infection begin
+    if(!G_InfectionStarted && !S_ForceFirstInfected && G_InfectedPlayerCount > 0) {
+        // Get (un)lucky first infected
+        declare Integer firstInfectionTime = Now;
+        foreach(Infected in Players) {
+            if(!IsInfected(Infected)) {
+                continue;
+            }
+            declare Integer InfectionTime for Infected = Now;
+            if(firstInfectionTime > InfectionTime) {
+                firstInfectionTime = InfectionTime;
+                G_FirstInfectedId = Infected.Id;
+            }
+        }
+        // Force infection begin
+        EndTime = Now;
+    }
+
     Prev_InfectedPlayerCount = G_InfectedPlayerCount;
     Net_InfectedCount        = G_InfectedPlayerCount;
 }
@@ -656,7 +684,7 @@ if(PlayerCountChanged) {
     UpdateModeStatusMessage();
 }
 
-if((InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
+if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
     // Don't end the round if not enough players
     if(Players.count >= C_MinimalPlayerCount) {
         MB_StopRound();
@@ -956,32 +984,11 @@ Void SetupSurvivorWeapons(CSmPlayer _Player) {
     if(_Player == Null)
         return;
 
-    switch(S_PursuitMode) {
-        case 0:
-        {
-            _Player.AmmoGain = 1.0;
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   1);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  4);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 1);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   2);
-        }
-        case 1:
-        {
-            _Player.AmmoGain = 1.0;
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   1);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  4);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 2);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   3);
-        }
-        case 2:
-        {
-            _Player.AmmoGain = 10.0;
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   10);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  10);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 10);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   10);
-        }
-    }
+    _Player.AmmoGain = S_SurvivorAmmoGain;
+    SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   S_SurvivorLaserMax);
+    SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  S_SurvivorRocketMax);
+    SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, S_SurvivorNucleusMax);
+    SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   S_SurvivorArrowMax);
 
     ForceSetWeapon(_Player);
 }
@@ -990,39 +997,18 @@ Void SetupInfectedWeapons(CSmPlayer _Player) {
     if(_Player == Null)
         return;
 
-    switch(S_PursuitMode) {
-        case 0:
-        {
-            _Player.AmmoGain = 0.0;
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   0);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  0);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 0);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   0);
-            // Override default settings
-            if(G_InfectedPlayerCount <= S_InfectedShoot) {
-                _Player.AmmoGain = S_InfectedWAmmoGain;
-                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   S_InfectedWLaserMax);
-                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  S_InfectedWRocketMax);
-                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, S_InfectedWNucleusMax);
-                SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   S_InfectedWArrowMax);
-            }
-        }
-        case 1:
-        {
-            _Player.AmmoGain = 1.0;
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   1);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  4);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 2);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   3);
-        }
-        case 2:
-        {
-            _Player.AmmoGain = 10.0;
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   10);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  10);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 10);
-            SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   10);
-        }
+    if(!S_PursuitMode && G_InfectedPlayerCount > S_InfectedShoot) {
+        _Player.AmmoGain = 0.0;
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   0);
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  0);
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, 0);
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   0);
+    } else {
+        _Player.AmmoGain = S_InfectedAmmoGain;
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Laser,   S_InfectedLaserMax);
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Rocket,  S_InfectedRocketMax);
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Nucleus, S_InfectedNucleusMax);
+        SetPlayerAmmoMax(_Player, CSmMode::EWeapon::Arrow,   S_InfectedArrowMax);
     }
 
     ForceSetWeapon(_Player);
@@ -1716,12 +1702,18 @@ Void SpawnAndInitPlayer(CSmMapPlayerSpawn _Spawn, CSmPlayer _Player) {
     }
 }
 
-Void SpawnAndInitPlayers(CSmPlayer[] _Players, Boolean _CanInfect) {
+Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
     declare CSmMapLandmark[] SurvivorSpawns = GetPermittedSpawns(G_SurvivorSpawns);
     declare CSmMapLandmark[] InfectedSpawns = GetPermittedSpawns(G_InfectedSpawns);
     foreach(Player in _Players) {
-        if(_CanInfect && C_InfectOnRespawn && !IsInfected(Player)) {
-            Infect(Player);
+        // New players are already infected if infection has started but have SpawnTime == -1
+        // But existing players have SpawnTime != -1 if they respawn.
+        declare Integer SpawnTime for Player;
+
+        if(!IsInfected(Player) && SpawnTime != -1 && C_InfectOnRespawn) {
+            if(G_InfectionStarted || S_InfectOnPreparationRespawn) {
+                Infect(Player);
+            }
         }
 
         declare CSmMapLandmark[] Spawns;
