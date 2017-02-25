@@ -1,0 +1,426 @@
+#Const Version      "2014-07-03"
+#Const ScriptName   "InfectionTree.Script.txt"
+
+
+#Const C_LibInfTree_TabName     "InfTreeTab"
+#Const C_LibInfTree_FakeRoot    "<fakeroot>"
+
+declare CUILayer G_LibInfTree_Layer;
+
+declare Text[][Text] G_LibInfTree_Graph;
+declare Boolean G_LibInfTree_Updated;
+
+declare Vec3 G_LibInfTree_RootPos;
+declare Vec2 G_LibInfTree_VBoundaries;
+
+Text Private_GenerateManialink() {
+    return """
+    <framemodel id="node" hidden="true">
+        <quad id="background"   posn="0 0 0"  sizen="20 5" halign="center" valign="center" bgcolor="000" hidden="true" />
+        <quad id="parent_arrow" posn="0 0 -1" sizen="0 0"  halign="right"  valign="center" bgcolor="fff" hidden="true" />
+        <label id="player_name" posn="0 0 0"  sizen="20 5" halign="center" valign="center" hidden="true" />
+    </framemodel>
+    <frame id="tree" posn="0 0 0">
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+        <frameinstance modelid="node" hidden="true" />
+    </frame>
+
+    <script><!--
+
+        #Include "MathLib" as ML
+        #Include "TextLib" as TL
+
+        #Const C_FakeRoot       "{{{C_LibInfTree_FakeRoot}}}"
+        #Const C_FakeRootPos    <-1024.0, -1024.0, -1024.0>
+        #Const C_NodeMargin     2.0
+        #Const C_NodeWidth      20.0
+        #Const C_NodeHeight     5.0
+        #Const C_LineThickness  0.25
+
+        declare CMlFrame   G_Tree;
+        declare CMlFrame[] G_TreeNodesHeap;
+        declare CMlFrame[] G_TreeNodesUsed;
+
+        declare Integer G_LastUpdate;
+        declare Text[][Text] G_InfectionGraph;
+        declare Real[Text] G_InfectionGraphHeight;
+        declare Real G_InfectionGraphDepth;
+        declare Real G_InfectionGraphWidth;
+        declare Real G_OptimalNodeWidth;
+
+        declare Text[Text] G_Login2Name;
+
+        Void UpdateLoginMap() {
+            foreach(Player in Players) {
+                G_Login2Name[Player.Login] = Player.Name;
+            }
+        }
+
+        Void ClearLoginMap() {
+            G_Login2Name.clear();
+        }
+
+        Text LoginToName(Text _Login) {
+            // If login is not mapped to any name, update the map
+            if(!G_Login2Name.existskey(_Login)) {
+                UpdateLoginMap();
+            }
+            // If it's still not mapped, then add login as a name
+            if(!G_Login2Name.existskey(_Login)) {
+                G_Login2Name[_Login] = _Login;
+            }
+            return G_Login2Name[_Login];
+        }
+
+        CMlQuad Node_Background(CMlFrame _Node) {
+            return (_Node.GetFirstChild("background") as CMlQuad);
+        }
+
+        CMlLabel Node_PlayerName(CMlFrame _Node) {
+            return (_Node.GetFirstChild("player_name") as CMlLabel);
+        }
+
+        CMlQuad Node_ParentArrow(CMlFrame _Node) {
+            return (_Node.GetFirstChild("parent_arrow") as CMlQuad);
+        }
+
+        CMlFrame NewNode() {
+            if(G_TreeNodesHeap.count <= 0) {
+                return Null;
+            }
+
+            declare Integer LastId = G_TreeNodesHeap.count - 1;
+            declare CMlFrame Node <=> G_TreeNodesHeap[LastId];
+            G_TreeNodesHeap.removekey(LastId);
+            G_TreeNodesUsed.add(Node);
+
+            Node.Visible                  = True;
+            Node_Background(Node).Visible = True;
+            Node_PlayerName(Node).Visible = True;
+            return Node;
+        }
+
+        Void FreeNode(CMlFrame _Node) {
+            _Node.Visible                   = False;
+            Node_Background(_Node).Visible  = False;
+            Node_PlayerName(_Node).Visible  = False;
+            Node_ParentArrow(_Node).Visible = False;
+            G_TreeNodesUsed.remove(_Node);
+            G_TreeNodesHeap.add(_Node);
+        }
+
+        Vec3 MeasureInfectionGraph(Text _Root) {
+            declare Real HeightSum     = 0.0;
+            declare Real MaxChildWidth = 0.0;
+            declare Real MaxDepth      = 0.0;
+            if(G_InfectionGraph.existskey(_Root)) {
+                declare Text[] Children = G_InfectionGraph[_Root];
+                foreach(Child in Children) {
+                    declare Vec3 Measures = MeasureInfectionGraph(Child);
+                    HeightSum += Measures.X;
+                    if(MaxChildWidth < Measures.Y) {
+                        MaxChildWidth = Measures.Y;
+                    }
+                    if(MaxDepth < Measures.Z) {
+                        MaxDepth = Measures.Z;
+                    }
+                }
+            }
+            if(HeightSum <= 0.0)
+                HeightSum += C_NodeHeight;
+            if(_Root != C_FakeRoot) {
+                MaxChildWidth += C_NodeWidth + C_NodeMargin;
+                MaxDepth += 1.0;
+            }
+            G_InfectionGraphHeight[_Root] = HeightSum;
+            return <HeightSum, MaxChildWidth, MaxDepth>;
+        }
+
+        Void DrawTree(Vec3 _ParentPos, Vec3 _Pos, Vec2 _HBounds, Text _Root) {
+            declare CMlFrame Node;
+            if(_ParentPos != C_FakeRootPos || _Root != C_FakeRoot) {
+                Node = NewNode();
+            }
+
+            if(_ParentPos != C_FakeRootPos) {
+                declare Arrow = Node_ParentArrow(Node);
+                declare dY    = _Pos.Y - _ParentPos.Y;
+                declare dX    = _Pos.X - _ParentPos.X - C_NodeWidth;
+
+                Arrow.RelativePosition.X -= C_NodeWidth / 2.0;
+                Arrow.RelativeRotation    = -180.0 * ML::Atan2(dY, dX) / ML::PI();
+                Arrow.Size                = <ML::Sqrt(dX*dX + dY*dY), C_LineThickness>;
+                Arrow.Visible             = True;
+            }
+
+            declare Vec3 ParentPos;
+            declare Real ShiftOffset;
+            if(_Root != C_FakeRoot) {
+                Node.Size                   = <G_OptimalNodeWidth, C_NodeHeight>;
+                Node.RelativePosition.X     = _Pos.X;
+                Node.RelativePosition.Y     = _Pos.Y;
+                Node_PlayerName(Node).Value = LoginToName(_Root);
+                Node_Background(Node).Size  = Node.Size;
+
+                ParentPos   = _Pos;
+                ShiftOffset = G_OptimalNodeWidth + C_NodeMargin;
+            } else {
+                ParentPos   = C_FakeRootPos;
+                ShiftOffset = 0.0;
+            }
+
+            if(!G_InfectionGraph.existskey(_Root))
+                return;
+            declare Text[] Children = G_InfectionGraph[_Root];
+            if(Children.count <= 0)
+                return;
+
+            declare TreeHeight    = G_InfectionGraphHeight[_Root];
+            declare BoundedHeight = _HBounds.Y - _HBounds.X;
+            declare HeightCooef   = BoundedHeight / TreeHeight;
+
+            declare TopBoundary = _Pos.Y + BoundedHeight / 2.0;
+            foreach(Child in Children) {
+                declare ChildTreeHeight    = G_InfectionGraphHeight[Child];
+                declare BoundedChildHeight = ChildTreeHeight * HeightCooef;
+                declare BottomBoundary     = TopBoundary - BoundedChildHeight;
+                declare ChildPos           = <_Pos.X + ShiftOffset, TopBoundary - BoundedChildHeight / 2.0, 0.0>;
+
+                DrawTree(ParentPos, ChildPos, <TopBoundary, BottomBoundary>, Child);
+
+                TopBoundary = BottomBoundary;
+            }
+        }
+
+        Void Init() {
+            G_LastUpdate = 0;
+            G_Tree = (Page.GetFirstChild("tree") as CMlFrame);
+            foreach(Control in G_Tree.Controls) {
+                if(!(Control is CMlFrame))
+                    continue;
+                G_TreeNodesHeap.add((Control as CMlFrame));
+            }
+        }
+
+        Void Clear() {
+            foreach(Node in G_TreeNodesUsed) {
+                FreeNode(Node);
+            }
+        }
+
+        Void CalcDimensions() {
+            declare Measures      = MeasureInfectionGraph(C_FakeRoot);
+            G_InfectionGraphWidth = Measures.Y;
+            G_InfectionGraphDepth = Measures.Z;
+            G_OptimalNodeWidth    = G_InfectionGraphWidth / G_InfectionGraphDepth - C_NodeMargin;
+        }
+
+        main() {
+            declare netread Integer      Net_LibInfTree_Update for Teams[0];
+            declare netread Text[][Text] Net_LibInfTree_Graph  for Teams[0];
+
+            Init();
+
+            while(True) {
+                yield;
+
+                declare Integer NewUpdate = Net_LibInfTree_Update;
+                if(G_LastUpdate < NewUpdate) {
+                    G_LastUpdate     = NewUpdate;
+                    G_InfectionGraph = Net_LibInfTree_Graph;
+
+                    log("INFECTION GRAPH!");
+                    log(G_InfectionGraph);
+
+                    Clear();
+                    if(G_InfectionGraph.count > 0) {
+                        CalcDimensions();
+                        DrawTree(C_FakeRootPos, {{{G_LibInfTree_RootPos}}}, {{{G_LibInfTree_VBoundaries}}}, C_FakeRoot);
+                    } else {
+                        ClearLoginMap();
+                    }
+                }
+            }
+        }
+
+    --></script>
+""";
+}
+
+Text GetScriptVersion() {
+    return Version;
+}
+
+Text GetScriptName() {
+    return ScriptName;
+}
+
+Void Load() {
+    G_LibInfTree_RootPos     = <0.0, 0.0, 0.0>;
+    G_LibInfTree_VBoundaries = <-50.0, 50.0>;
+
+    G_LibInfTree_Layer = UIManager.UILayerCreate();
+    UIManager.UIAll.UILayers.add(G_LibInfTree_Layer);
+
+    G_LibInfTree_Layer.ManialinkPage = Private_GenerateManialink();
+}
+
+Void Infect(Text _VictimLogin, Text _InfectorLogin) {
+    declare InfectorLogin = _InfectorLogin;
+    if(InfectorLogin == "") {
+        InfectorLogin = C_LibInfTree_FakeRoot;
+    }
+    if(!G_LibInfTree_Graph.existskey(InfectorLogin))
+        G_LibInfTree_Graph[InfectorLogin] = Text[];
+    G_LibInfTree_Graph[InfectorLogin].add(_VictimLogin);
+    G_LibInfTree_Updated = True;
+}
+
+Void Infect(Text _VictimLogin) {
+    Infect(_VictimLogin, "");
+}
+
+// Clear infection tree
+Void Clear() {
+    G_LibInfTree_Graph.clear();
+    G_LibInfTree_Updated = True;
+}
+
+Void Loop() {
+    if(!G_LibInfTree_Updated)
+        return;
+    G_LibInfTree_Updated = False;
+
+    declare netwrite Integer      Net_LibInfTree_Update for Teams[0];
+    declare netwrite Text[][Text] Net_LibInfTree_Graph  for Teams[0];
+
+    Net_LibInfTree_Update = Now;
+    Net_LibInfTree_Graph  = G_LibInfTree_Graph;
+}
+

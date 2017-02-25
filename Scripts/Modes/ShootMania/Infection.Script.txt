@@ -33,9 +33,10 @@
 #Include "Libs/Nadeo/TabsServer.Script.txt" as Tabs
 #Include "Libs/Nadeo/ShootMania/SM.Script.txt" as SM
 #Include "Libs/Nadeo/ShootMania/Score.Script.txt" as Scores
-#Include "Libs/Nadeo/ShootMania/ScoresTable_Edit.Script.txt" as ScoresTable
+#Include "Libs/Nadeo/ScoresTable2.Script.txt" as ST
 #Include "Libs/Nadeo/ShootMania/SpawnScreen.Script.txt" as SpawnScreen
 #Include "Libs/Nadeo/Manialink.Script.txt" as Manialink
+#Include "Libs/RIscRIpt/InfectionTree.Script.txt" as ITree
 
 #Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
@@ -83,6 +84,9 @@
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
+
+#Const   C_ModeInfection                    "Infection"
+#Const   C_ModePursuit                      "Pursuit"
 
 #Const   C_MinimalPlayerCount               2
 #Const   C_InfectOnRespawn                  True        //as "infect on respawn"
@@ -188,6 +192,53 @@
 
 #Const   C_UnexpectedBehaviour "Unexpected behaviour!\nThis must not happen!\nWhere: %1\nData: %2"
 
+#Const   C_ST_Columns                   2
+#Const   C_ST_Rows                      8
+
+#Const   C_ST_Scale                     0.95
+#Const   C_ST_Size_Header               <-1.0, -1.0>
+#Const   C_ST_Size_Contents             <-1.0, -1.0>
+#Const   C_ST_Size_Footer               <-1.0, -1.0>
+
+#Const   C_ST_Color_Survivor            <0.5, 0.1, 0.1>
+#Const   C_ST_Color_Infected            <0.1, 0.5, 0.1>
+
+#Const   C_ST_Col_Id_Status             "Stts"
+#Const   C_ST_Col_Id_SurvivalTime       "SrvT"
+#Const   C_ST_Col_Id_Infections         "Infs"
+#Const   C_ST_Col_Id_Hits               "Hits"
+#Const   C_ST_Col_Id_Survivals          "Srvs"
+
+#Const   C_ST_Col_Legend_Status         "Status"
+#Const   C_ST_Col_Legend_SurvivalTime   "Survival Time"
+#Const   C_ST_Col_Legend_Infections     "Inf"
+#Const   C_ST_Col_Legend_Hits           "Hit"
+#Const   C_ST_Col_Legend_Survivals      "Srv"
+
+#Const   C_ST_Col_DefVal_Status         "$f00Survivor"
+#Const   C_ST_Col_DefVal_SurvivalTime   "--:--.--"
+#Const   C_ST_Col_DefVal_Infections     "$0800"
+#Const   C_ST_Col_DefVal_Hits           "$f000"
+#Const   C_ST_Col_DefVal_Survivals      "$ff00"
+
+#Const   C_ST_Col_Width_Status          8.0
+#Const   C_ST_Col_Width_SurvivalTime    8.0
+#Const   C_ST_Col_Width_Infections      1.8
+#Const   C_ST_Col_Width_Hits            1.8
+#Const   C_ST_Col_Width_Survivals       1.8
+
+#Const   C_ST_Col_Weight_Status         50.0
+#Const   C_ST_Col_Weight_SurvivalTime   60.0
+#Const   C_ST_Col_Weight_Infections     70.0
+#Const   C_ST_Col_Weight_Hits           71.0
+#Const   C_ST_Col_Weight_Survivals      72.0
+
+#Const   C_ST_Col_Align_Status          CMlControl::AlignHorizontal::Left
+#Const   C_ST_Col_Align_SurvivalTime    CMlControl::AlignHorizontal::HCenter
+#Const   C_ST_Col_Align_Infections      CMlControl::AlignHorizontal::Right
+#Const   C_ST_Col_Align_Hits            CMlControl::AlignHorizontal::HCenter
+#Const   C_ST_Col_Align_Survivals       CMlControl::AlignHorizontal::Left
+
 /* -------------------------------------- */
 // Globals
 /* -------------------------------------- */
@@ -195,7 +246,6 @@
 declare Integer G_PrevPlayerProcTime;
 declare Boolean G_InfectionStarted;
 
-declare Ident   G_RoundInfoLayerId;
 declare Integer G_InfectedPlayerCount;
 declare Ident   G_FirstInfectedId;
 
@@ -222,7 +272,6 @@ declare Boolean G_MapSetting_WaterForInfected_Heals;
 UIManager.UILayerDestroyAll();
 UIManager.UIAll.AltMenuNoCustomScores = True;
 UIManager.UIAll.AltMenuNoDefaultScores = True;
-G_RoundInfoLayerId = UIManager.UILayerCreate().Id;
 ***
 
 ***StartServer***
@@ -246,8 +295,6 @@ SpawnScreen::CreateMapInfo();
 SpawnScreen::CreateScores();
 SpawnScreen::CreatePrettyRules(ModeName);
 
-/* -------------------------------------- */
-// Iniz tops
 Top::Load();
 Top::SetTopWidth(65.);
 declare Real TopXPosition = -62.5;
@@ -262,33 +309,41 @@ Top::Create(C_TopInfections, C_TitleTopInfections, PlayersNbPerTop, <TopXPositio
 TopXPosition += TopXOffset;
 Top::Create(C_TopSurivals, C_TitleTopSurvivals, PlayersNbPerTop, <TopXPosition, TopYPosition>);
 Top::SetLayerType(CUILayer::EUILayerType::AltMenu);
-// Init scores table
-ScoresTable::Load();
-ScoresTable::SetTableWidth(190.);
-ScoresTable::SetColumnWidth("Custom1", 10.);
-ScoresTable::SetDefaultCustom1(C_TxtSurvivor);
-ScoresTable::SetColumnWidth("Custom2", 7.);
-ScoresTable::SetDefaultCustom2(C_TxtUnkTime);
-ScoresTable::SetColumnName("Custom2", "Survival Time");
-ScoresTable::SetColumnWidth("Custom3", 8.);
-ScoresTable::SetDefaultCustom3("$3600$fff/$f000$fff/$ff00");
-ScoresTable::SetColumnName("Custom3", "$360Inf$fff/$f00Hit$fff/$ff0Surv");
-ScoresTable::SetColumnWidth("RoundPoints", 5.);
-ScoresTable::SetColumnWidth("Points", 5.);
-ScoresTable::SetTableFormat(2, 7);
-ScoresTable::SetDefaultFooterStats("Version: " ^ Version);
-ScoresTable::Build(True, False);
-//Init Tabs
-Tabs::Load();
-declare TabsLayer <=> Tabs::CreateTabPaneLayer(
-[
-    "TopTab"    => "Buddies",
-    "ScoresTab" => "Rankings"
 
+ST::Load();
+ST::SetStyle("LibST_Base");
+ST::SetStyle("LibST_SMBaseSolo");
+ST::SetStyle("LibST_SMBasePoints");
+ST::SetStyle("LibST_SMWithLegends");
+
+ST::SetFormat(C_ST_Columns, C_ST_Rows);
+ST::SetTextScale(C_ST_Scale);
+ST::SetSize(C_ST_Size_Header, C_ST_Size_Contents, C_ST_Size_Footer);
+
+ST::CreateCol(C_ST_Col_Id_Status       , C_ST_Col_Legend_Status       , C_ST_Col_DefVal_Status       , C_ST_Col_Width_Status       , C_ST_Col_Weight_Status);
+ST::CreateCol(C_ST_Col_Id_SurvivalTime , C_ST_Col_Legend_SurvivalTime , C_ST_Col_DefVal_SurvivalTime , C_ST_Col_Width_SurvivalTime , C_ST_Col_Weight_SurvivalTime);
+ST::CreateCol(C_ST_Col_Id_Infections   , C_ST_Col_Legend_Infections   , C_ST_Col_DefVal_Infections   , C_ST_Col_Width_Infections   , C_ST_Col_Weight_Infections);
+ST::CreateCol(C_ST_Col_Id_Hits         , C_ST_Col_Legend_Hits         , C_ST_Col_DefVal_Hits         , C_ST_Col_Width_Hits         , C_ST_Col_Weight_Hits);
+ST::CreateCol(C_ST_Col_Id_Survivals    , C_ST_Col_Legend_Survivals    , C_ST_Col_DefVal_Survivals    , C_ST_Col_Width_Survivals    , C_ST_Col_Weight_Survivals);
+
+ST::SetColTextAlign(C_ST_Col_Id_Status       , C_ST_Col_Align_Status);
+ST::SetColTextAlign(C_ST_Col_Id_SurvivalTime , C_ST_Col_Align_SurvivalTime);
+ST::SetColTextAlign(C_ST_Col_Id_Infections   , C_ST_Col_Align_Infections);
+ST::SetColTextAlign(C_ST_Col_Id_Hits         , C_ST_Col_Align_Hits);
+ST::SetColTextAlign(C_ST_Col_Id_Survivals    , C_ST_Col_Align_Survivals);
+
+ST::Build("SM");
+
+ITree::Load();
+
+Tabs::Load();
+declare TabsLayer <=> Tabs::CreateTabPaneLayer([
+    "TopTab"     => "Buddies",
+    "ScoresTab"  => "Rankings",
+    "InfTreeTab" => "Statistics"
 ], 30, -5, False);
 TabsLayer.Type = CUILayer::EUILayerType::AltMenu;
 UIManager.UIAll.UILayers.add(TabsLayer);
-ScoresTable::GetLayerScoresTable().Type = CUILayer::EUILayerType::Normal;
 
 Layers::Create(C_MainManialinkLayer, GenerateManialink());
 ***
@@ -356,7 +411,7 @@ foreach(Landmark in MapLandmarks) {
     }
 }
 
-ScoresTable::StartMatch();
+ST::ClearScores();
 Scores::MatchBegin();
 
 Top::ResetAll();
@@ -433,8 +488,6 @@ if(Players.count >= C_MinimalPlayerCount) {
     UIManager.UIAll.StatusMessage = TL::Compose("At least $f00%1 $fffplayers are needed!", TL::ToText(C_MinimalPlayerCount));
 }
 
-UIManager.UIAll.UILayers.add(UIManager.UILayers[G_RoundInfoLayerId]);
-
 // Update conditional gates
 foreach(Gate in G_CondGates_Up_EachRound) {
     UpdateGateStatus(Gate, True);
@@ -442,6 +495,9 @@ foreach(Gate in G_CondGates_Up_EachRound) {
 foreach(Gate in G_CondGates_Up_Always) {
     UpdateGateStatus(Gate, True);
 }
+
+// Clear infection tree
+ITree::Clear();
 ***
 
 
@@ -452,21 +508,14 @@ MB_UseSectionTurn = False;
 
 ***OnNewPlayer***
 ***
-declare netwrite Boolean Net_Infected     for Player;
-declare netwrite Real Net_NearestSurvivor for Player;
-
-declare Ident InfectorId      for Player = NullId;
-declare Boolean Infected      for Player;
-declare Integer SpawnTime     for Player = -1;
-declare Integer InfectionTime for Player = -1;
-
-Infected            = G_InfectionStarted && S_InfectNewPlayers;
-Net_Infected        = Infected;
-Net_NearestSurvivor = 0.0;
+if(!IsInfected(Player)) {
+    // If should be infected
+    if(G_InfectionStarted && S_InfectNewPlayers)
+        Infect(Player);
+}
 
 UpdateTable(Player);
 
-ScoresTable::RestoreCustomScores(Player);
 declare UI <=> UIManager.GetUI(Player);
 Tabs::UseTabs(UI, "ScoresTab");
 Tabs::AlwaysShowScore(UI, True);
@@ -479,8 +528,6 @@ if(Layers::IsMissing(C_MainManialinkLayer, Player.Id)) {
 ***OnNewSpectator***
 ***
 UpdateTable(Spectator);
-
-ScoresTable::RestoreCustomScores(Spectator);
 
 declare UI <=> UIManager.GetUI(Spectator);
 Tabs::UseTabs(UI, "ScoresTab");
@@ -549,6 +596,7 @@ if(G_PrevPlayerProcTime + C_InfectionTick < Now) {
 
     Message::Loop();
     Top::Loop();
+    ITree::Loop();
 }
 
 if(EndTime > -1 && EndTime <= Now) {
@@ -655,6 +703,8 @@ if(Prev_PlayerCount != Players.count) {
 
     // Infected player count might be changed too
     G_InfectedPlayerCount = CountInfected();
+
+    UpdateTablePlayers();
 }
 if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
     PlayerCountChanged = True;
@@ -728,7 +778,6 @@ if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
 Message::CleanAllMessages();
 
 // Display result
-UIManager.UIAll.UILayers.removekey(G_RoundInfoLayerId);
 UIManager.UIAll.UISequence           = CUIConfig::EUISequence::EndRound;
 UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::EndRound;
 UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::ForcedVisible;
@@ -758,6 +807,7 @@ if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
     MB_StopMap();
 }
 
+ITree::Loop();
 Top::Loop();
 Scores::RoundEnd();
 
@@ -774,7 +824,6 @@ DestroyAllBotPlayers();
 ***EndMap***
 ***
 Scores::MatchEnd();
-ScoresTable::EndMatch();
 
 UIManager.UIAll.BigMessage    = "";
 UIManager.UIAll.StatusMessage = "";
@@ -844,7 +893,7 @@ UIManager.ResetAll();
 UIManager.UILayerDestroyAll();
 
 Color::Unload();
-ScoresTable::Unload();
+ST::Unload();
 ***
 
 Boolean IsInfected(CSmPlayer _Player) {
@@ -975,6 +1024,8 @@ Void InitSurvivor(CSmPlayer _Player) {
 
     SetupArmor(_Player, S_SurvivorMaxArmor, S_SurvivorRespawnArmor);
     SetupStamina(_Player, S_SurvivorStaminaGain, S_SurvivorStamina);
+
+    ST::SetPlayerColor(_Player, C_ST_Color_Survivor);
 }
 
 Void InitInfected(CSmPlayer _Player) {
@@ -985,6 +1036,8 @@ Void InitInfected(CSmPlayer _Player) {
 
     SetupArmor(_Player, S_InfectedMaxArmor, S_InfectedRespawnArmor);
     SetupStamina(_Player, S_InfectedStaminaGain, S_InfectedStamina);
+
+    ST::SetPlayerColor(_Player, C_ST_Color_Infected);
 }
 
 Void ForceSetWeapon(CSmPlayer _Player) {
@@ -1035,23 +1088,31 @@ Void SetupInfectedWeapons(CSmPlayer _Player) {
     ForceSetWeapon(_Player);
 }
 
+Void UpdateTablePlayers() {
+    declare Text[] Logins = Text[];
+    foreach(Player in Players) {
+        if(Player.Score == Null)
+            continue;
+        Logins.add(Player.Login);
+    }
+    foreach(Player in Spectators) {
+        if(Player.Score == Null)
+            continue;
+        Logins.add(Player.Login);
+    }
+    ST::FilterLogins(Logins);
+}
+
 Void UpdateTablePlayerStatus(CSmPlayer _Player) {
     if(!Spectators.existskey(_Player.Id)) {
         if(IsInfected(_Player)) {
             declare Ident InfectorId for _Player;
-            ScoresTable::SetCustom1(_Player, C_TxtInfected);
-            if(Players.existskey(InfectorId)) {
-                ScoresTable::SetFooterStats(_Player, C_TxtInfectedBy ^ Players[InfectorId].Name);
-            } else {
-                ScoresTable::SetFooterStats(_Player, C_TxtInfectedFooter);
-            }
+            ST::SetColValue(C_ST_Col_Id_Status, _Player.Score, C_TxtInfected);
         } else {
-            ScoresTable::SetCustom1(_Player, C_TxtSurvivor);
-            ScoresTable::SetFooterStats(_Player, C_TxtSurvivorFooter);
+            ST::SetColValue(C_ST_Col_Id_Status, _Player.Score, C_TxtSurvivor);
         }
     } else {
-        ScoresTable::SetCustom1(_Player, C_TxtSpectator);
-        ScoresTable::SetFooterStats(_Player, C_TxtSpectatorFooter);
+        ST::SetColValue(C_ST_Col_Id_Status, _Player.Score, C_TxtSpectator);
     }
 }
 
@@ -1063,36 +1124,44 @@ Void UpdateTableSurvivalTime(CSmPlayer _Player) {
         if(SurvivalTime < 0) {
             SurvivalTime = 0;
         }
-        ScoresTable::SetCustom2(_Player, TL::TimeToText(SurvivalTime, True));
+        ST::SetColValue(C_ST_Col_Id_SurvivalTime, _Player.Score, TL::TimeToText(SurvivalTime, True));
     } else {
-        ScoresTable::SetCustom2(_Player, C_TxtUnkTime);
+        ST::SetColValue(C_ST_Col_Id_SurvivalTime, _Player.Score, C_TxtUnkTime);
     }
 }
 
-Void UpdateTableScores(CSmPlayer _Player) {
+Void UpdateTableInfections(CSmPlayer _Player) {
     declare Round_Infections for _Player = 0;
-    declare Round_Hits       for _Player = 0;
-    declare Round_Survivals  for _Player = 0;
+    ST::SetColValue(C_ST_Col_Id_Infections, _Player.Score, "$080" ^ Round_Infections);
+}
 
-    ScoresTable::SetCustom3(_Player,
-        TL::Compose("$360%1$fff/$f00%2$fff/$ff0%3",
-            TL::ToText(Round_Infections),
-            TL::ToText(Round_Hits),
-            TL::ToText(Round_Survivals)
-        )
-    );
+Void UpdateTableHits(CSmPlayer _Player) {
+    declare Round_Hits for _Player = 0;
+    ST::SetColValue(C_ST_Col_Id_Hits, _Player.Score, "$f00" ^ Round_Hits);
+}
+
+Void UpdateTableSurvivals(CSmPlayer _Player) {
+    declare Round_Survivals for _Player = 0;
+    ST::SetColValue(C_ST_Col_Id_Survivals, _Player.Score, "$ff0" ^ Round_Survivals);
 }
 
 Void UpdateTable(CSmPlayer _Player) {
     UpdateTablePlayerStatus(_Player);
     UpdateTableSurvivalTime(_Player);
-    UpdateTableScores(_Player);
+    UpdateTableInfections(_Player);
+    UpdateTableHits(_Player);
+    UpdateTableSurvivals(_Player);
+    if(IsInfected(_Player)) {
+        ST::SetPlayerColor(_Player, C_ST_Color_Infected);
+    } else {
+        ST::SetPlayerColor(_Player, C_ST_Color_Survivor);
+    }
 }
 
 Void UpdateModeStatusMessage() {
     ModeStatusMessage = TL::Compose(
         """Currently on the server:
--   $360%1$g infected,
+-   $080%1$g infected,
 -   $f00%2$g survivors, and
 -   $aaa%3$g spectators.
     """,
@@ -1124,7 +1193,7 @@ Void RewardSurvivorsForSurvivingInfection() {
         Match_Survivals += 1;
         Top::SetRecord(Survivor, C_TopSurivals, TL::ToText(Match_Survivals), -Match_Survivals);
         Scores::AddPoints(Survivor, S_ScoreForSurv1Inf);
-        UpdateTableScores(Survivor);
+        UpdateTableSurvivals(Survivor);
     }
 }
 
@@ -1151,7 +1220,7 @@ Void OnHit(CSmModeEvent _Event, Integer _Multiplier) {
     Match_Hits += Points;
     Scores::AddPoints(_Event.Shooter, Points);
     Top::SetRecord(_Event.Shooter, C_TopHits, TL::ToText(Match_Hits), -Match_Hits);
-    UpdateTableScores(_Event.Shooter);
+    UpdateTableHits(_Event.Shooter);
 }
 
 Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
@@ -1192,7 +1261,7 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
         }
 
         Scores::AddPoints(_Infector, S_InfectionScore);
-        UpdateTableScores(_Infector);
+        UpdateTableInfections(_Infector);
 
         // Notify everyone about infection
         //Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), 4000, 1);
@@ -1216,7 +1285,8 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
 
     RewardSurvivorsForSurvivingInfection();
 
-    // SendNotice to all players about infection
+    // SendNotice to all players about infection,
+    // and update infection graph
     if(_Infector != Null) {
         foreach(Player in AllPlayers) {
             declare Text Message;
@@ -1236,15 +1306,23 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
                 0
             );
         }
-    } else if(_CauseFmt != "") {
-        UIManager.UIAll.SendNotice(
-            TL::Compose(_CauseFmt, _Victim.Name),
-            CUIConfig::ENoticeLevel::PlayerInfo,
-            _Victim.User,
-            CUIConfig::EAvatarVariant::Default,
-            CUIConfig::EUISound::PlayerHit,
-            0
-        );
+
+        // Update infection graph
+        ITree::Infect(_Victim.Login, _Infector.Login);
+    } else {
+        if(_CauseFmt != "") {
+            UIManager.UIAll.SendNotice(
+                TL::Compose(_CauseFmt, _Victim.Name),
+                CUIConfig::ENoticeLevel::PlayerInfo,
+                _Victim.User,
+                CUIConfig::EAvatarVariant::Default,
+                CUIConfig::EUISound::PlayerHit,
+                0
+            );
+        }
+
+        // Update infection graph
+        ITree::Infect(_Victim.Login);
     }
 
     if(G_InfectedPlayerCount == Players.count - 1) {
