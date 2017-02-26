@@ -15,6 +15,7 @@ declare Vec2 G_LibInfTree_BackgroundSize;
 
 declare Vec3 G_LibInfTree_RootPos;
 declare Vec2 G_LibInfTree_VBoundaries;
+declare Vec2 G_LibInfTree_HBoundaries;
 
 declare Real G_LibInfTree_NodeMargin;
 declare Real G_LibInfTree_NodeWidth;
@@ -31,6 +32,7 @@ Text Private_GenerateManialink() {
 
     return """
     <framemodel id="node" hidden="true">
+        <quad id="background"   posn="0 0 0"  sizen="20 5" halign="center" valign="center" hidden="true" />
         <quad id="parent_arrow" posn="0 0 -1" sizen="0 0"  halign="right"  valign="center" bgcolor="fff7" hidden="true" />
         <label id="player_name" posn="0 0 0"  sizen="20 5" halign="center" valign="center" hidden="true" />
     </framemodel>
@@ -177,6 +179,9 @@ Text Private_GenerateManialink() {
         #Const C_NodeWidth      {{{G_LibInfTree_NodeWidth}}}
         #Const C_NodeHeight     {{{G_LibInfTree_NodeHeight}}}
         #Const C_LineThickness  {{{G_LibInfTree_NodeThickness}}}
+        #Const C_RootPos        {{{G_LibInfTree_RootPos}}}
+        #Const C_VBoundaries    {{{G_LibInfTree_VBoundaries}}}
+        #Const C_HBoundaries    {{{G_LibInfTree_HBoundaries}}}
 
         declare CMlFrame   G_Tree;
         declare CMlFrame[] G_TreeNodesHeap;
@@ -227,6 +232,10 @@ Text Private_GenerateManialink() {
             return G_Login2Name[_Login];
         }
 
+        CMlQuad Node_Background(CMlFrame _Node) {
+            return (_Node.GetFirstChild("background") as CMlQuad);
+        }
+
         CMlLabel Node_PlayerName(CMlFrame _Node) {
             return (_Node.GetFirstChild("player_name") as CMlLabel);
         }
@@ -247,42 +256,39 @@ Text Private_GenerateManialink() {
 
             Node.Visible                  = True;
             Node_PlayerName(Node).Visible = True;
+            Node_Background(Node).Visible = True;
             return Node;
         }
 
         Void FreeNode(CMlFrame _Node) {
-            _Node.Visible                   = False;
+            Node_Background(_Node).Visible   = False;
             Node_PlayerName(_Node).Visible  = False;
             Node_ParentArrow(_Node).Visible = False;
+            _Node.Visible                   = False;
             G_TreeNodesUsed.remove(_Node);
             G_TreeNodesHeap.add(_Node);
         }
 
-        Vec3 MeasureInfectionGraph(Text _Root) {
-            declare Real HeightSum     = 0.0;
-            declare Real MaxChildWidth = 0.0;
-            declare Real MaxDepth      = 0.0;
+        Vec2 MeasureInfectionGraph(Text _Root) {
+            declare Real HeightSum = 0.0;
+            declare Real MaxDepth  = 0.0;
             if(G_InfectionGraph.existskey(_Root)) {
                 declare Text[] Children = G_InfectionGraph[_Root];
                 foreach(Child in Children) {
-                    declare Vec3 Measures = MeasureInfectionGraph(Child);
+                    declare Vec2 Measures = MeasureInfectionGraph(Child);
                     HeightSum += Measures.X;
-                    if(MaxChildWidth < Measures.Y) {
-                        MaxChildWidth = Measures.Y;
-                    }
-                    if(MaxDepth < Measures.Z) {
-                        MaxDepth = Measures.Z;
+                    if(MaxDepth < Measures.Y) {
+                        MaxDepth = Measures.Y;
                     }
                 }
             }
             if(HeightSum <= 0.0)
-                HeightSum += C_NodeHeight;
+                HeightSum = 1.0;
             if(_Root != C_FakeRoot) {
-                MaxChildWidth += C_NodeWidth + C_NodeMargin;
                 MaxDepth += 1.0;
             }
             G_InfectionGraphHeight[_Root] = HeightSum;
-            return <HeightSum, MaxChildWidth, MaxDepth>;
+            return <HeightSum, MaxDepth>;
         }
 
         Void DrawTree(Vec3 _ParentPos, Vec3 _Pos, Vec2 _HBounds, Text _Root) {
@@ -309,6 +315,7 @@ Text Private_GenerateManialink() {
                 Node.RelativePosition.X     = _Pos.X;
                 Node.RelativePosition.Y     = _Pos.Y;
                 Node_PlayerName(Node).Value = LoginToName(_Root);
+                Node_Background(Node).Size  = Node.Size;
 
                 ParentPos   = _Pos;
                 ShiftOffset = G_OptimalNodeWidth + C_NodeMargin;
@@ -323,13 +330,13 @@ Text Private_GenerateManialink() {
             if(Children.count <= 0)
                 return;
 
-            declare TreeHeight    = G_InfectionGraphHeight[_Root];
+            declare TreeHeight    = G_InfectionGraphHeight[_Root] * C_NodeHeight;
             declare BoundedHeight = _HBounds.Y - _HBounds.X;
             declare HeightCooef   = BoundedHeight / TreeHeight;
 
             declare TopBoundary = _Pos.Y + BoundedHeight / 2.0;
             foreach(Child in Children) {
-                declare ChildTreeHeight    = G_InfectionGraphHeight[Child];
+                declare ChildTreeHeight    = G_InfectionGraphHeight[Child] * C_NodeHeight;
                 declare BoundedChildHeight = ChildTreeHeight * HeightCooef;
                 declare BottomBoundary     = TopBoundary - BoundedChildHeight;
                 declare ChildPos           = <_Pos.X + ShiftOffset, TopBoundary - BoundedChildHeight / 2.0, 0.0>;
@@ -343,6 +350,7 @@ Text Private_GenerateManialink() {
         Void Init() {
             G_LastUpdate = 0;
             G_Tree = (Page.GetFirstChild("tree") as CMlFrame);
+            G_InfectionGraphWidth = (C_HBoundaries.Y - C_HBoundaries.X);
             foreach(Control in G_Tree.Controls) {
                 if(!(Control is CMlFrame))
                     continue;
@@ -358,9 +366,11 @@ Text Private_GenerateManialink() {
 
         Void CalcDimensions() {
             declare Measures      = MeasureInfectionGraph(C_FakeRoot);
-            G_InfectionGraphWidth = Measures.Y;
-            G_InfectionGraphDepth = Measures.Z;
-            G_OptimalNodeWidth    = G_InfectionGraphWidth / G_InfectionGraphDepth - C_NodeMargin;
+            G_InfectionGraphDepth = Measures.Y;
+            G_OptimalNodeWidth    = G_InfectionGraphWidth / G_InfectionGraphDepth - C_NodeMargin * 2.0;
+            if(G_OptimalNodeWidth > G_InfectionGraphWidth / 5.0) {
+                G_OptimalNodeWidth = G_InfectionGraphWidth / 5.0;
+            }
         }
 
         Void DisplayTree() {
@@ -371,7 +381,7 @@ Text Private_GenerateManialink() {
 
                 if(G_InfectionGraph.count > 0) {
                     CalcDimensions();
-                    DrawTree(C_FakeRootPos, {{{G_LibInfTree_RootPos}}}, {{{G_LibInfTree_VBoundaries}}}, C_FakeRoot);
+                    DrawTree(C_FakeRootPos, C_RootPos, C_VBoundaries, C_FakeRoot);
                 }
             }
             if(!G_Tree.Visible)
@@ -439,6 +449,7 @@ Void Load() {
         0.0
     >;
     G_LibInfTree_VBoundaries = <0.0, -G_LibInfTree_BackgroundSize.Y>;
+    G_LibInfTree_HBoundaries = <0.0,  G_LibInfTree_BackgroundSize.X>;
 
     G_LibInfTree_Layer = UIManager.UILayerCreate();
     UIManager.UIAll.UILayers.add(G_LibInfTree_Layer);

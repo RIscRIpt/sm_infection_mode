@@ -1,6 +1,6 @@
 /*
  * Infection game mode for ShootMania Storm
- * Copyright © 2017 RIscRIpt
+ * Copyright В© 2017 RIscRIpt
  *
  * This script is highly modificated, and fully rewritten
  * version of the mewin's script which can be found
@@ -26,7 +26,6 @@
 
 #Include "TextLib" as TL
 #Include "MathLib" as ML
-#Include "Libs/Nadeo/Color.Script.txt" as Color
 #Include "Libs/Nadeo/Layers.Script.txt" as Layers
 #Include "Libs/Nadeo/Message.Script.txt" as Message
 #Include "Libs/Nadeo/Top2.Script.txt" as Top
@@ -267,6 +266,21 @@ declare Boolean G_MapSetting_WaterForInfected_Eliminates;
 declare Boolean G_MapSetting_WaterForInfected_Protects;
 declare Boolean G_MapSetting_WaterForInfected_Heals;
 
+***LogVersion***
+***
+MB_LogVersion(ScriptName                   , Version);
+MB_LogVersion(Layers::GetScriptName()      , Layers::GetScriptVersion());
+MB_LogVersion(Message::GetScriptName()     , Message::GetScriptVersion());
+MB_LogVersion(Top::GetScriptName()         , Top::GetScriptVersion());
+MB_LogVersion(Tabs::GetScriptName()        , Tabs::GetScriptVersion());
+MB_LogVersion(SM::GetScriptName()          , SM::GetScriptVersion());
+MB_LogVersion(Scores::GetScriptName()      , Scores::GetScriptVersion());
+MB_LogVersion(ST::GetScriptName()          , ST::GetScriptVersion());
+MB_LogVersion(SpawnScreen::GetScriptName() , SpawnScreen::GetScriptVersion());
+MB_LogVersion(Manialink::GetScriptName()   , Manialink::GetScriptVersion());
+MB_LogVersion(ITree::GetScriptName()       , ITree::GetScriptVersion());
+***
+
 ***InitServer***
 ***
 UIManager.UILayerDestroyAll();
@@ -278,8 +292,6 @@ UIManager.UIAll.AltMenuNoDefaultScores = True;
 ***
 SM::SetupDefaultVisibility();
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
-
-Color::Load(); //?
 
 /* -------------------------------------- */
 // Create the rules
@@ -519,7 +531,6 @@ UpdateTable(Player);
 
 declare UI <=> UIManager.GetUI(Player);
 Tabs::UseTabs(UI, "ScoresTab");
-Tabs::AlwaysShowScore(UI, True);
 
 if(Layers::IsMissing(C_MainManialinkLayer, Player.Id)) {
     Layers::Attach(C_MainManialinkLayer, Player.Id);
@@ -532,7 +543,6 @@ UpdateTable(Spectator);
 
 declare UI <=> UIManager.GetUI(Spectator);
 Tabs::UseTabs(UI, "ScoresTab");
-Tabs::AlwaysShowScore(UI, True);
 
 if(UI != Null) {
     UI.SpectatorForcedClan      = 0;
@@ -542,6 +552,12 @@ if(UI != Null) {
 if(Layers::IsMissing(C_MainManialinkLayer, Spectator.Id)) {
     Layers::Attach(C_MainManialinkLayer, Spectator.Id);
 }
+***
+
+***Yield***
+***
+Message::Loop();
+Tabs::XmlRpcLoop();
 ***
 
 ***PlayLoop***
@@ -595,7 +611,6 @@ if(G_PrevPlayerProcTime + C_InfectionTick < Now) {
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
 
-    Message::Loop();
     Top::Loop();
     ITree::Loop();
 }
@@ -893,7 +908,6 @@ SpawnScreen::DestroyMapInfo();
 UIManager.ResetAll();
 UIManager.UILayerDestroyAll();
 
-Color::Unload();
 ST::Unload();
 ***
 
