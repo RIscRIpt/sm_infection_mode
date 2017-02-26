@@ -1,4 +1,4 @@
-#Const Version      "2014-07-03"
+#Const Version      "2017-02-28"
 #Const ScriptName   "InfectionTree.Script.txt"
 
 
@@ -10,17 +10,32 @@ declare CUILayer G_LibInfTree_Layer;
 declare Text[][Text] G_LibInfTree_Graph;
 declare Boolean G_LibInfTree_Updated;
 
+declare Vec3 G_LibInfTree_TabPos;
+declare Vec2 G_LibInfTree_BackgroundSize;
+
 declare Vec3 G_LibInfTree_RootPos;
 declare Vec2 G_LibInfTree_VBoundaries;
 
+declare Real G_LibInfTree_NodeMargin;
+declare Real G_LibInfTree_NodeWidth;
+declare Real G_LibInfTree_NodeHeight;
+declare Real G_LibInfTree_NodeThickness;
+
 Text Private_GenerateManialink() {
+    declare TreePos = G_LibInfTree_TabPos.X ^ " "
+                    ^ G_LibInfTree_TabPos.Y ^ " "
+                    ^ G_LibInfTree_TabPos.Z;
+
+    declare BgSize  = G_LibInfTree_BackgroundSize.X ^ " "
+                    ^ G_LibInfTree_BackgroundSize.Y;
+
     return """
     <framemodel id="node" hidden="true">
-        <quad id="background"   posn="0 0 0"  sizen="20 5" halign="center" valign="center" bgcolor="000" hidden="true" />
-        <quad id="parent_arrow" posn="0 0 -1" sizen="0 0"  halign="right"  valign="center" bgcolor="fff" hidden="true" />
+        <quad id="parent_arrow" posn="0 0 -1" sizen="0 0"  halign="right"  valign="center" bgcolor="fff7" hidden="true" />
         <label id="player_name" posn="0 0 0"  sizen="20 5" halign="center" valign="center" hidden="true" />
     </framemodel>
-    <frame id="tree" posn="0 0 0">
+    <frame id="tree" posn="{{{TreePos}}}" hidden="true">
+        <quad posn="0 0 0" sizen="{{{BgSize}}}" halign="left" valign="top" bgcolor="0007" />
         <frameinstance modelid="node" hidden="true" />
         <frameinstance modelid="node" hidden="true" />
         <frameinstance modelid="node" hidden="true" />
@@ -158,15 +173,16 @@ Text Private_GenerateManialink() {
 
         #Const C_FakeRoot       "{{{C_LibInfTree_FakeRoot}}}"
         #Const C_FakeRootPos    <-1024.0, -1024.0, -1024.0>
-        #Const C_NodeMargin     2.0
-        #Const C_NodeWidth      20.0
-        #Const C_NodeHeight     5.0
-        #Const C_LineThickness  0.25
+        #Const C_NodeMargin     {{{G_LibInfTree_NodeMargin}}}
+        #Const C_NodeWidth      {{{G_LibInfTree_NodeWidth}}}
+        #Const C_NodeHeight     {{{G_LibInfTree_NodeHeight}}}
+        #Const C_LineThickness  {{{G_LibInfTree_NodeThickness}}}
 
         declare CMlFrame   G_Tree;
         declare CMlFrame[] G_TreeNodesHeap;
         declare CMlFrame[] G_TreeNodesUsed;
 
+        declare Boolean G_MustRedraw;
         declare Integer G_LastUpdate;
         declare Text[][Text] G_InfectionGraph;
         declare Real[Text] G_InfectionGraphHeight;
@@ -175,6 +191,19 @@ Text Private_GenerateManialink() {
         declare Real G_OptimalNodeWidth;
 
         declare Text[Text] G_Login2Name;
+
+        // Taken from:
+        // https://github.com/maniaplanet/game-modes/blob/master/Common/Scripts/Libs/Nadeo/TabsClient.Script.txt
+        Boolean CanShowTree(CUIConfig UI) {
+            declare netread Boolean _TabsLib_UseTabs for UI;
+            if(!_TabsLib_UseTabs)
+                return False;
+
+            declare Boolean _TabsLib_AltLayerIsVisible for UI;
+            declare Text    _TabsLib_CurrentTab        for UI;
+
+            return _TabsLib_AltLayerIsVisible && (_TabsLib_CurrentTab == "{{{C_LibInfTree_TabName}}}");
+        }
 
         Void UpdateLoginMap() {
             foreach(Player in Players) {
@@ -198,10 +227,6 @@ Text Private_GenerateManialink() {
             return G_Login2Name[_Login];
         }
 
-        CMlQuad Node_Background(CMlFrame _Node) {
-            return (_Node.GetFirstChild("background") as CMlQuad);
-        }
-
         CMlLabel Node_PlayerName(CMlFrame _Node) {
             return (_Node.GetFirstChild("player_name") as CMlLabel);
         }
@@ -221,14 +246,12 @@ Text Private_GenerateManialink() {
             G_TreeNodesUsed.add(Node);
 
             Node.Visible                  = True;
-            Node_Background(Node).Visible = True;
             Node_PlayerName(Node).Visible = True;
             return Node;
         }
 
         Void FreeNode(CMlFrame _Node) {
             _Node.Visible                   = False;
-            Node_Background(_Node).Visible  = False;
             Node_PlayerName(_Node).Visible  = False;
             Node_ParentArrow(_Node).Visible = False;
             G_TreeNodesUsed.remove(_Node);
@@ -286,7 +309,6 @@ Text Private_GenerateManialink() {
                 Node.RelativePosition.X     = _Pos.X;
                 Node.RelativePosition.Y     = _Pos.Y;
                 Node_PlayerName(Node).Value = LoginToName(_Root);
-                Node_Background(Node).Size  = Node.Size;
 
                 ParentPos   = _Pos;
                 ShiftOffset = G_OptimalNodeWidth + C_NodeMargin;
@@ -341,7 +363,24 @@ Text Private_GenerateManialink() {
             G_OptimalNodeWidth    = G_InfectionGraphWidth / G_InfectionGraphDepth - C_NodeMargin;
         }
 
+        Void DisplayTree() {
+            if(G_MustRedraw) {
+                G_MustRedraw = False;
+
+                Clear();
+
+                if(G_InfectionGraph.count > 0) {
+                    CalcDimensions();
+                    DrawTree(C_FakeRootPos, {{{G_LibInfTree_RootPos}}}, {{{G_LibInfTree_VBoundaries}}}, C_FakeRoot);
+                }
+            }
+            if(!G_Tree.Visible)
+                G_Tree.Show();
+        }
+
         main() {
+            wait(InputPlayer != Null);
+
             declare netread Integer      Net_LibInfTree_Update for Teams[0];
             declare netread Text[][Text] Net_LibInfTree_Graph  for Teams[0];
 
@@ -355,17 +394,21 @@ Text Private_GenerateManialink() {
                     G_LastUpdate     = NewUpdate;
                     G_InfectionGraph = Net_LibInfTree_Graph;
 
-                    log("INFECTION GRAPH!");
-                    log(G_InfectionGraph);
-
-                    Clear();
-                    if(G_InfectionGraph.count > 0) {
-                        CalcDimensions();
-                        DrawTree(C_FakeRootPos, {{{G_LibInfTree_RootPos}}}, {{{G_LibInfTree_VBoundaries}}}, C_FakeRoot);
-                    } else {
+                    if(G_InfectionGraph.count <= 0) {
                         ClearLoginMap();
                     }
+                    G_MustRedraw = True;
                 }
+
+                if(!PageIsVisible)
+                    continue;
+                if(!CanShowTree(UI)) {
+                    if(G_Tree.Visible)
+                        G_Tree.Hide();
+                    continue;
+                }
+
+                DisplayTree();
             }
         }
 
@@ -382,8 +425,20 @@ Text GetScriptName() {
 }
 
 Void Load() {
-    G_LibInfTree_RootPos     = <0.0, 0.0, 0.0>;
-    G_LibInfTree_VBoundaries = <-50.0, 50.0>;
+    G_LibInfTree_NodeMargin    = 2.0;
+    G_LibInfTree_NodeWidth     = 20.0;
+    G_LibInfTree_NodeHeight    = 5.0;
+    G_LibInfTree_NodeThickness = 0.25;
+
+    G_LibInfTree_TabPos         = <-95.0, 42.0, 0.0>;
+    G_LibInfTree_BackgroundSize = <255.0, 110.0>;
+
+    G_LibInfTree_RootPos     = <
+        G_LibInfTree_NodeWidth / 2.0,
+        -G_LibInfTree_BackgroundSize.Y / 2.0,
+        0.0
+    >;
+    G_LibInfTree_VBoundaries = <0.0, -G_LibInfTree_BackgroundSize.Y>;
 
     G_LibInfTree_Layer = UIManager.UILayerCreate();
     UIManager.UIAll.UILayers.add(G_LibInfTree_Layer);
