@@ -39,6 +39,7 @@
 
 #Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
+#Setting S_SphericalInfectionDistance       -1.0 /*1.30384*/ as "<hidden>" //as "spherical infection distance"
 #Setting S_InfectionScore                   4           as "infection score"
 #Setting S_InfectionArmorBonus              100         as "armor bonus for infection"
 #Setting S_PVP                              False       as "enable PvP for survivors"
@@ -1410,9 +1411,13 @@ Void ManageMapWaterEffectsForSurvivor(CSmPlayer _Player) {
 }
 
 Boolean InfectsByDistance(Vec3 _P1, Vec3 _P2) {
-    return ML::Abs(_P1.X - _P2.X) <= S_HorizontalInfectionDistance &&
-           ML::Abs(_P1.Y - _P2.Y) <= S_VerticalInfectionDistance &&
-           ML::Abs(_P1.Z - _P2.Z) <= S_HorizontalInfectionDistance;
+    if(S_SphericalInfectionDistance >= 0.0) {
+        return ML::Distance(_P1, _P2) <= S_SphericalInfectionDistance;
+    } else {
+        return ML::Abs(_P1.X - _P2.X) <= S_HorizontalInfectionDistance &&
+            ML::Abs(_P1.Y - _P2.Y) <= S_VerticalInfectionDistance &&
+            ML::Abs(_P1.Z - _P2.Z) <= S_HorizontalInfectionDistance;
+    }
 }
 
 Void ManageInfectedPlayer(CSmPlayer _Infected) {
