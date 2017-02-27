@@ -26,7 +26,7 @@
 
 #Include "TextLib" as TL
 #Include "MathLib" as ML
-#Include "Libs/Nadeo/Layers.Script.txt" as Layers
+#Include "Libs/Nadeo/Layers2.Script.txt" as Layers
 #Include "Libs/Nadeo/Message.Script.txt" as Message
 #Include "Libs/Nadeo/Top2.Script.txt" as Top
 #Include "Libs/Nadeo/TabsServer.Script.txt" as Tabs
@@ -83,6 +83,8 @@
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
+
+#Const   C_MaxSignedInteger                 2147483647
 
 #Const   C_ModeInfection                    "Infection"
 #Const   C_ModePursuit                      "Pursuit"
@@ -251,6 +253,7 @@ declare Ident   G_FirstInfectedId;
 declare CSmMapLandmark[] G_CondGates_Up_Always;
 declare CSmMapLandmark[] G_CondGates_Up_EachRound;
 
+declare CSmMapLandmark[] G_AllSpawns;
 declare CSmMapLandmark[] G_SurvivorSpawns;
 declare CSmMapLandmark[] G_InfectedSpawns;
 
@@ -344,6 +347,8 @@ ST::SetColTextAlign(C_ST_Col_Id_Infections   , C_ST_Col_Align_Infections);
 ST::SetColTextAlign(C_ST_Col_Id_Hits         , C_ST_Col_Align_Hits);
 ST::SetColTextAlign(C_ST_Col_Id_Survivals    , C_ST_Col_Align_Survivals);
 
+ST::GetLayer().Type = CUILayer::EUILayerType::Normal;
+
 ST::Build("SM");
 
 ITree::Load();
@@ -358,6 +363,7 @@ TabsLayer.Type = CUILayer::EUILayerType::AltMenu;
 UIManager.UIAll.UILayers.add(TabsLayer);
 
 Layers::Create(C_MainManialinkLayer, GenerateManialink());
+Layers::Attach(C_MainManialinkLayer);
 ***
 
 ***StartMap***
@@ -374,6 +380,7 @@ UIManager.UIAll.MarkersXML = "";
 G_InfectedPlayerCount = 0;
 G_InfectedSpawns.clear();
 G_SurvivorSpawns.clear();
+G_AllSpawns.clear();
 OffZoneRadius = -1.0;
 G_CondGates_Up_Always.clear();
 G_CondGates_Up_EachRound.clear();
@@ -491,21 +498,29 @@ foreach(Player in AllPlayers) {
 UpdateModeStatusMessage();
 
 StartTime = Now + 1000;
-if(Players.count >= C_MinimalPlayerCount) {
+if(IsOperating()) {
     EndTime = Now + 1000 + S_PreparationTime;
+
+    // Update conditional gates (allow opening)
+    foreach(Gate in G_CondGates_Up_EachRound) {
+        UpdateGateStatus(Gate, True);
+    }
+    foreach(Gate in G_CondGates_Up_Always) {
+        UpdateGateStatus(Gate, True);
+    }
 } else {
     // Not enough players
     EndTime = -1;
     UIManager.UIAll.BigMessage    = "$f92Waiting for Players";
     UIManager.UIAll.StatusMessage = TL::Compose("At least $f00%1 $fffplayers are needed!", TL::ToText(C_MinimalPlayerCount));
-}
 
-// Update conditional gates
-foreach(Gate in G_CondGates_Up_EachRound) {
-    UpdateGateStatus(Gate, True);
-}
-foreach(Gate in G_CondGates_Up_Always) {
-    UpdateGateStatus(Gate, True);
+    // Open all gates
+    foreach(Gate in G_CondGates_Up_EachRound) {
+        SetGateOpened(Gate, True);
+    }
+    foreach(Gate in G_CondGates_Up_Always) {
+        SetGateOpened(Gate, True);
+    }
 }
 
 // Clear infection tree
@@ -532,9 +547,6 @@ UpdateTable(Player);
 declare UI <=> UIManager.GetUI(Player);
 Tabs::UseTabs(UI, "ScoresTab");
 
-if(Layers::IsMissing(C_MainManialinkLayer, Player.Id)) {
-    Layers::Attach(C_MainManialinkLayer, Player.Id);
-}
 ***
 
 ***OnNewSpectator***
@@ -549,9 +561,6 @@ if(UI != Null) {
     UI.SpectatorForceCameraType = 15;
 }
 
-if(Layers::IsMissing(C_MainManialinkLayer, Spectator.Id)) {
-    Layers::Attach(C_MainManialinkLayer, Spectator.Id);
-}
 ***
 
 ***Yield***
@@ -565,58 +574,17 @@ Tabs::XmlRpcLoop();
 if(G_PrevPlayerProcTime + C_InfectionTick < Now) {
     G_PrevPlayerProcTime = Now;
 
-    declare CSmPlayer[] UnspawnedPlayers;
-
-    foreach(Player in Players) {
-        if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
-            UnspawnedPlayers.add(Player);
-            continue;
-        }
-        if(Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
-            continue;
-        }
-
-        if(IsInfected(Player)) {
-            // Infected
-
-            if(G_MapSetting_WaterHasEffects) {
-                ManageMapWaterEffectsForInfected(Player);
-            }
-
-            // Provide infinite stamina for infected
-            if(S_InfectedStaminaGain > C_StaminaMaxGain) {
-                Player.Stamina = C_StaminaIntUnit;
-            }
-
-            // Check for infection and nearest survivor
-            ManageInfectedPlayer(Player);
-        } else {
-            // Survivor
-
-            if(G_MapSetting_WaterHasEffects) {
-                ManageMapWaterEffectsForSurvivor(Player);
-            }
-
-            // Provide infinite stamina for survivor
-            if(S_SurvivorStaminaGain > C_StaminaMaxGain) {
-                Player.Stamina = C_StaminaIntUnit;
-            }
-
-            // Check if leaving the map, and take some actions
-            ManageMapLeaver(Player);
-        }
-        ManageIdlePlayer(Player);
-    }
-
-    if(UnspawnedPlayers.count > 0)
-        SpawnAndInitPlayers(UnspawnedPlayers);
+    if(IsOperating())
+        OperativePlayLoop();
+    else
+        NonoperationalPlayLoop();
 
     Top::Loop();
     ITree::Loop();
 }
 
 if(EndTime > -1 && EndTime <= Now) {
-    if(!G_InfectionStarted && Players.count >= C_MinimalPlayerCount) {
+    if(!G_InfectionStarted && IsOperating()) {
         // Begin infection round
         G_InfectionStarted = True;
 
@@ -742,9 +710,9 @@ if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
     // If someone got infected before first infected
     // and S_ForceFirstInfected is False, then remember the first infected
     // and force the infection begin
-    if(!G_InfectionStarted && !S_ForceFirstInfected && G_InfectedPlayerCount > 0) {
+    if(!G_InfectionStarted && G_FirstInfectedId == NullId && !S_ForceFirstInfected && G_InfectedPlayerCount > 0) {
         // Get (un)lucky first infected
-        declare Integer firstInfectionTime = 2147483647;
+        declare Integer firstInfectionTime = C_MaxSignedInteger;
         foreach(Infected in Players) {
             if(!IsInfected(Infected)) {
                 continue;
@@ -755,8 +723,11 @@ if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
                 G_FirstInfectedId = Infected.Id;
             }
         }
-        // Force infection begin
-        EndTime = Now;
+        // If the unlucky first infected was found,
+        // force infection begin
+        if(G_FirstInfectedId != NullId && Players.existskey(G_FirstInfectedId)) {
+            EndTime = Now;
+        }
     }
 
     Prev_InfectedPlayerCount = G_InfectedPlayerCount;
@@ -766,6 +737,7 @@ if(PlayerCountChanged) {
     // If player count (survivor or infected) changed, update conditional gates
     PlayerCountChanged = False;
     foreach(Gate in G_CondGates_Up_Always) {
+        // Permit only opening gates during the round
         UpdateGateStatus(Gate, False);
     }
     UpdateModeStatusMessage();
@@ -858,9 +830,8 @@ foreach(Player in Players) {
     }
 }
 
-foreach(Player in AllPlayers) {
-    Layers::Detach(C_MainManialinkLayer, Player.Id);
-}
+Layers::Detach(C_MainManialinkLayer);
+Layers::Destroy(C_MainManialinkLayer);
 
 if(MaxScore == 0) {
     UIManager.UIAll.BigMessage = _("|Match|Draw");
@@ -896,6 +867,7 @@ UIManager.UIAll.StatusMessage           = "";
 
 G_InfectedSpawns.clear();
 G_SurvivorSpawns.clear();
+G_AllSpawns.clear();
 OffZoneRadius = -1.0;
 G_CondGates_Up_Always.clear();
 G_CondGates_Up_EachRound.clear();
@@ -910,6 +882,11 @@ UIManager.UILayerDestroyAll();
 
 ST::Unload();
 ***
+
+// IsOperating returns whether the Script can operate in a normal mode
+Boolean IsOperating() {
+    return Players.count >= C_MinimalPlayerCount;
+}
 
 Boolean IsInfected(CSmPlayer _Player) {
     if(_Player != Null) {
@@ -1654,6 +1631,8 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
         G_SurvivorSpawns.add(_Spawn);
         //Gauge.Clan = 0;
     }
+
+    G_AllSpawns.add(_Spawn);
 }
 
 Void SetupMapWaterProperties(Text _TxtProperty) {
@@ -1735,30 +1714,33 @@ Boolean ConditionsAreSatisfied(Integer[][] _Conditions) {
     return Result;
 }
 
-Void UpdateGateStatus(CSmMapLandmark _Gate, Boolean _CanClose) {
-    declare Integer[][] Conditions for _Gate;
-    declare Boolean DefaultOpened  for _Gate = False;
-
+Void SetGateOpened(CSmMapLandmark _Gate, Boolean _Opened) {
     declare Gate  <=> _Gate.Gate;
     declare Gauge <=> _Gate.Gauge;
 
-    // Permit only opening gates during the round
-    if(!_CanClose && !Gate.ManualClosed)
-        return;
-
-    declare Open = DefaultOpened;
-    if(ConditionsAreSatisfied(Conditions)) {
-        // Toggle `Open` status if the conditions are satisfied
-        Open = !Open;
-    }
-
-    if(Open) {
+    if(_Opened) {
         Gauge.ValueReal = 0.0;
     } else {
         Gauge.ValueReal = 1.0;
     }
-    Gauge.Captured = !Open;
-    Gate.ManualClosed = !Open;
+    Gauge.Captured = !_Opened;
+    Gate.ManualClosed = !_Opened;
+}
+
+Void UpdateGateStatus(CSmMapLandmark _Gate, Boolean _CanClose) {
+    declare Integer[][] Conditions for _Gate;
+    declare Boolean DefaultOpened  for _Gate = False;
+
+    if(!_CanClose && !_Gate.Gate.ManualClosed)
+        return;
+
+    declare Status = DefaultOpened;
+    if(ConditionsAreSatisfied(Conditions)) {
+        // Toggle `Status` if the conditions are satisfied
+        Status = !Status;
+    }
+
+    SetGateOpened(_Gate, Status);
 }
 
 CSmMapLandmark[] GetPermittedSpawns(CSmMapLandmark[] _Spawns) {
@@ -1818,30 +1800,102 @@ Void SpawnAndInitPlayer(CSmMapPlayerSpawn _Spawn, CSmPlayer _Player) {
 }
 
 Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
-    declare CSmMapLandmark[] SurvivorSpawns = GetPermittedSpawns(G_SurvivorSpawns);
-    declare CSmMapLandmark[] InfectedSpawns = GetPermittedSpawns(G_InfectedSpawns);
+    declare CSmMapLandmark[] SurvivorSpawns;
+    declare CSmMapLandmark[] InfectedSpawns;
+    if(IsOperating()) {
+        SurvivorSpawns = GetPermittedSpawns(G_SurvivorSpawns);
+        InfectedSpawns = GetPermittedSpawns(G_InfectedSpawns);
+    }
     foreach(Player in _Players) {
-        // New players are already infected if infection has started but have SpawnTime == -1
-        // But existing players have SpawnTime != -1 if they respawn.
-        declare Integer SpawnTime for Player;
-
-        if(!IsInfected(Player) && SpawnTime != -1 && C_InfectOnRespawn) {
-            if(G_InfectionStarted || S_InfectOnPreparationRespawn) {
-                Infect(Player);
-            }
-        }
-
         declare CSmMapLandmark[] Spawns;
-        if(IsInfected(Player)) {
-            Spawns = InfectedSpawns;
+        if(IsOperating()) {
+            // New players are already infected if infection has started but have SpawnTime == -1
+            // But existing players have SpawnTime != -1 if they respawn.
+            declare Integer SpawnTime for Player;
+
+            if(!IsInfected(Player) && SpawnTime != -1 && C_InfectOnRespawn) {
+                if(G_InfectionStarted || S_InfectOnPreparationRespawn) {
+                    Infect(Player);
+                }
+            }
+
+            if(IsInfected(Player)) {
+                Spawns = InfectedSpawns;
+            } else {
+                Spawns = SurvivorSpawns;
+            }
+
         } else {
-            Spawns = SurvivorSpawns;
+            Spawns = G_AllSpawns;
         }
+
         SpawnAndInitPlayer(
             Spawns[ML::Rand(0, Spawns.count - 1)].PlayerSpawn,
             Player
         );
     }
+}
+
+Void OperativePlayLoop() {
+    declare CSmPlayer[] UnspawnedPlayers;
+
+    foreach(Player in Players) {
+        if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
+            UnspawnedPlayers.add(Player);
+            continue;
+        }
+        if(Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
+            continue;
+        }
+
+        if(IsInfected(Player)) {
+            // Infected
+
+            if(G_MapSetting_WaterHasEffects) {
+                ManageMapWaterEffectsForInfected(Player);
+            }
+
+            // Provide infinite stamina for infected
+            if(S_InfectedStaminaGain > C_StaminaMaxGain) {
+                Player.Stamina = C_StaminaIntUnit;
+            }
+
+            // Check for infection and nearest survivor
+            ManageInfectedPlayer(Player);
+        } else {
+            // Survivor
+
+            if(G_MapSetting_WaterHasEffects) {
+                ManageMapWaterEffectsForSurvivor(Player);
+            }
+
+            // Provide infinite stamina for survivor
+            if(S_SurvivorStaminaGain > C_StaminaMaxGain) {
+                Player.Stamina = C_StaminaIntUnit;
+            }
+
+            // Check if leaving the map, and take some actions
+            ManageMapLeaver(Player);
+        }
+        ManageIdlePlayer(Player);
+    }
+
+    if(UnspawnedPlayers.count > 0)
+        SpawnAndInitPlayers(UnspawnedPlayers);
+}
+
+Void NonoperationalPlayLoop() {
+    declare CSmPlayer[] UnspawnedPlayers;
+
+    foreach(Player in Players) {
+        if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
+            UnspawnedPlayers.add(Player);
+            continue;
+        }
+    }
+
+    if(UnspawnedPlayers.count > 0)
+        SpawnAndInitPlayers(UnspawnedPlayers);
 }
 
 Text GenerateManialink() {
