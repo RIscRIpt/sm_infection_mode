@@ -240,6 +240,9 @@
 #Const   C_ST_Col_Align_Hits            CMlControl::AlignHorizontal::HCenter
 #Const   C_ST_Col_Align_Survivals       CMlControl::AlignHorizontal::Left
 
+#Const   C_Inf_XmlRpc_InfectByLogin     "Inf_Infect"
+#Const   C_Inf_XmlClb_Infected          "Inf_Infection"
+
 /* -------------------------------------- */
 // Globals
 /* -------------------------------------- */
@@ -683,6 +686,9 @@ foreach(Event in PendingEvents) {
             PassOn(Event);
     }
 }
+
+// Should be in `***Yield***`, but it depends on InfectByLogin
+InfectionXmlRpcLoop();
 
 declare netwrite Integer Net_PlayerCount   for Teams[0];
 declare netwrite Integer Net_InfectedCount for Teams[0];
@@ -1256,6 +1262,8 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
     declare Integer SpawnTime     for _Victim;
     declare Integer InfectionTime for _Victim;
 
+    declare Text InfectorLogin = "";
+
     Infected            = True;
     Net_Infected        = True;
     Net_NearestSurvivor = 0.0;
@@ -1281,6 +1289,8 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
         // Notify everyone about infection
         //Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), 4000, 1);
         //Message::SendBigMessage(_Victim, "$360Infected!", 4000, 1);
+
+        InfectorLogin = _Infector.Login;
     }
 
     G_InfectedPlayerCount += 1;
@@ -1360,6 +1370,8 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
             );
         }
     }
+
+    XmlRpc.SendCallbackArray(C_Inf_XmlClb_Infected, [InfectorLogin, _Victim.Login]);
 }
 
 Void Infect(CSmPlayer _Victim, Text _CauseFmt) {
@@ -1372,6 +1384,17 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
 
 Void Infect(CSmPlayer _Victim) {
     Infect(_Victim, Null);
+}
+
+Void InfectByLogin(Text _Login) {
+    foreach(Player in Players) {
+        if(IsInfected(Player))
+            continue;
+        if(Player.Login == _Login) {
+            Infect(Player);
+            break;
+        }
+    }
 }
 
 Void EliminateByWater(CSmPlayer _Player) {
@@ -1922,6 +1945,22 @@ Void NonoperationalPlayLoop() {
 
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
+}
+
+Void InfectionXmlRpcLoop() {
+    foreach(Event in XmlRpc.PendingEvents) {
+        switch(Event.Type) {
+            case CXmlRpcEvent::EType::Callback:
+            {
+                switch(Event.Param1) {
+                    case C_Inf_XmlRpc_InfectByLogin:
+                    {
+                        InfectByLogin(Event.Param2);
+                    }
+                }
+            }
+        }
+    }
 }
 
 Text GenerateManialink() {
