@@ -41,7 +41,7 @@
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
 #Setting S_SphericalInfectionDistance       -1.0 /*1.30384*/ as "<hidden>" //as "spherical infection distance"
 #Setting S_InfectionScore                   4           as "infection score"
-#Setting S_InfectionArmorBonus              100         as "armor bonus for infection"
+#Setting S_InfectionArmorBonus              1           as "armor bonus for infection"
 #Setting S_PVP                              False       as "enable PvP for survivors"
 #Setting S_PursuitMode                      False       as "pursuit mode (need round restart)"
 #Setting S_UsePVPCollisions                 False       as "use PvP collisions (need round restart)"
@@ -128,9 +128,8 @@
 #Const   C_TopSurivals                      "Srvs"
 #Const   C_TitleTopSurvivals                "Top Survivals"
 
-#Const   C_TxtRules                         "Free for all. You spawn as a survivor, if you die you respawn infected. Infected players can't shoot, but can infect other players by touching them. The match ends when a player reaches the score limit or the round limit is reached."
+#Const   C_TxtRules                         "Free for all. You spawn as a survivor, if you die you respawn infected. Infected can infect other players by touching them."
 #Const   C_TxtRoundEnd                      "A round ends either if no survivors are left or if the time limit is reached."
-#Const   Description                        "TYPE: Free For All\nOBJECTIVE:\nSurvive as long as possible and then infect other people."
 
 #Const   C_PlayerIsIdle                     "$z$s is idle."
 #Const   C_WasIdleTooLongMovingToSpec       "$z$s was idle for too long. Moving to spectators."
@@ -297,20 +296,6 @@ UIManager.UIAll.AltMenuNoDefaultScores = True;
 SM::SetupDefaultVisibility();
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 
-/* -------------------------------------- */
-// Create the rules
-declare ModeName = "Infection";
-SpawnScreen::SetModeName(ModeName);
-SpawnScreen::AddSubsection("Rules", C_TxtRules, 0.);
-SpawnScreen::AddSubsection("Round end", C_TxtRoundEnd, 35.);
-SpawnScreen::AddSubsection("Description", """- Survivors are $f00red$g, Infecteds are $360green$g.
-- the first infected gets some points if all players are infected
-- the first infected can shoot until there is a second infected
-- when an infected player infects another player he regenerates one armor""", 60.);
-SpawnScreen::CreateMapInfo();
-SpawnScreen::CreateScores();
-SpawnScreen::CreatePrettyRules(ModeName);
-
 Top::Load();
 Top::SetTopWidth(65.);
 declare Real TopXPosition = -62.5;
@@ -445,6 +430,43 @@ foreach(Player in Players) {
     Match_Hits       = 0;
     Match_Survivals  = 0;
 }
+
+declare ModeName = "Infection";
+SpawnScreen::SetModeName(ModeName);
+SpawnScreen::AddSubsection("Rules", C_TxtRules, 0.);
+SpawnScreen::AddSubsection("Round end", C_TxtRoundEnd, 30.);
+
+declare Text MatchEnd;
+MatchEnd ^= "A match ends after ";
+if(S_RoundLimit > 0 && S_ScoreLimit == 0) {
+    MatchEnd ^= S_RoundLimit ^ " round(s).";
+} else if(S_RoundLimit == 0 && S_ScoreLimit > 0) {
+    MatchEnd ^= "some player gets at least " ^ S_ScoreLimit ^ " point(s).";
+} else {
+    MatchEnd ^= S_RoundLimit ^ ", or after some player gets at least " ^ S_ScoreLimit ^ " point(s).";
+}
+SpawnScreen::AddSubsection("Match end", MatchEnd, 55.);
+
+declare Text Description;
+Description ^= "- $" ^ TL::ColorToText(C_SurvivorColor) ^ "Survivors$z VS $" ^ TL::ColorToText(C_InfectedColor) ^ "Infected$z;";
+if(S_RewardFirstInfected > 0.0) {
+    Description ^= "\n- the first infected gets " ^ S_RewardFirstInfected ^ "*(number of players - 1) additional points if all players are infected;";
+}
+if(S_InfectedShoot > 0) {
+    if(S_InfectedShoot == 1) {
+        Description ^= "\n- the first infected can shoot until there is a second infected;";
+    } else {
+        Description ^= "\n- the first " ^ S_InfectedShoot ^ " infected players can shoot until there is " ^ (S_InfectedShoot+1) ^ " infected players;";
+    }
+}
+if(S_InfectionArmorBonus > 0) {
+    Description ^= "\n- when an infected players infects another player he regenerates " ^ S_InfectionArmorBonus ^ " armor(s);";
+}
+SpawnScreen::AddSubsection("Description", Description, 80.);
+
+SpawnScreen::CreateMapInfo();
+SpawnScreen::CreateScores();
+SpawnScreen::CreatePrettyRules(ModeName);
 ***
 
 ***InitRound***
@@ -1247,7 +1269,7 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
         Top::SetRecord(_Infector, C_TopInfections, TL::ToText(Match_Infections), -Match_Infections);
 
         if(_Infector.Armor < _Infector.ArmorMax) {
-            _Infector.Armor += S_InfectionArmorBonus;
+            _Infector.Armor += S_InfectionArmorBonus * C_ArmorUnit;
         }
         if(S_RewardInfectors > 0) {
             RewardInfector(_Infector, S_InfectionScore * S_RewardInfectors);
@@ -1411,13 +1433,12 @@ Void ManageMapWaterEffectsForSurvivor(CSmPlayer _Player) {
 }
 
 Boolean InfectsByDistance(Vec3 _P1, Vec3 _P2) {
-    if(S_SphericalInfectionDistance >= 0.0) {
-        return ML::Distance(_P1, _P2) <= S_SphericalInfectionDistance;
-    } else {
+    if(S_SphericalInfectionDistance <= 0.0) {
         return ML::Abs(_P1.X - _P2.X) <= S_HorizontalInfectionDistance &&
             ML::Abs(_P1.Y - _P2.Y) <= S_VerticalInfectionDistance &&
             ML::Abs(_P1.Z - _P2.Z) <= S_HorizontalInfectionDistance;
     }
+    return ML::Distance(_P1, _P2) <= S_SphericalInfectionDistance;
 }
 
 Void ManageInfectedPlayer(CSmPlayer _Infected) {
