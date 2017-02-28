@@ -292,15 +292,15 @@ MB_LogVersion(ITree::GetScriptName()       , ITree::GetScriptVersion());
 ***InitServer***
 ***
 UIManager.UILayerDestroyAll();
-UIManager.UIAll.AltMenuNoCustomScores = True;
+SM::SetupDefaultVisibility();
+UIManager.UIAll.AltMenuNoCustomScores  = True;
 UIManager.UIAll.AltMenuNoDefaultScores = True;
+UIManager.UIAll.OverlayHide321Go       = True;
+UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 ***
 
 ***StartServer***
 ***
-SM::SetupDefaultVisibility();
-UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
-
 Top::Load();
 Top::SetTopWidth(65.);
 declare Real TopXPosition = -62.5;
