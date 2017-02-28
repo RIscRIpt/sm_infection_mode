@@ -147,6 +147,8 @@
 #Const   C_TxtTimeLimitReached              "Time limit reached!"
 #Const   C_TxtNPlayersSurvivied             "$f00%1 $fffplayer(s) survived!"
 #Const   C_TxtNoMoreInfected                "No more infected players!"
+#Const   C_TxtAtLeastNPlayersNeeded         "At least $f00%1$z players are needed!"
+#Const   C_TxtWaitingPlayers                "$f92Waiting for Players"
 
 #Const   C_TxtGetBackToBattleField          "Get back to the battlefield!"
 #Const   C_TxtYouWillBeInfectedInX          "You will be infected in $080%1"
@@ -492,6 +494,9 @@ Scores::RoundBegin();
 UIManager.UIAll.UISequence      = CUIConfig::EUISequence::Playing;
 UIManager.UIAll.BigMessageSound = CUIConfig::EUISound::Default;
 
+Message::SetDefaultAllMessages("");
+Message::CleanAllMessages();
+
 G_FirstInfectedId     = NullId;
 G_InfectedPlayerCount = 0;
 
@@ -537,8 +542,10 @@ if(IsOperating()) {
 } else {
     // Not enough players
     EndTime = -1;
-    UIManager.UIAll.BigMessage    = "$f92Waiting for Players";
-    UIManager.UIAll.StatusMessage = TL::Compose("At least $f00%1 $fffplayers are needed!", TL::ToText(C_MinimalPlayerCount));
+    Message::SetDefaultBigMessage(C_TxtWaitingPlayers);
+    Message::SetDefaultStatusMessage(
+        TL::Compose(C_TxtAtLeastNPlayersNeeded, TL::ToText(C_MinimalPlayerCount))
+    );
 
     // Open all gates
     foreach(Gate in G_CondGates_Up_EachRound) {
@@ -791,27 +798,37 @@ if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
     Scores::AddPoints(FirstInfected, ML::NearestInteger(G_InfectedPlayerCount * S_RewardFirstInfected));
 }
 
+Scores::RoundEnd();
+Top::Loop();
+ITree::Loop();
+
 // Clean UI
+Message::SetDefaultAllMessages("");
 Message::CleanAllMessages();
 
 // Display result
 UIManager.UIAll.UISequence           = CUIConfig::EUISequence::EndRound;
 UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::EndRound;
 UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::ForcedVisible;
-UIManager.UIAll.StatusMessage        = "";
 
+declare Text BigMessage    = "";
+declare Text StatusMessage = "";
 if(G_InfectedPlayerCount >= Players.count) {
-    UIManager.UIAll.BigMessage = C_TxtAllPlayersInfected;
+    BigMessage = C_TxtAllPlayersInfected;
 } else if(G_InfectedPlayerCount == 0) {
-    UIManager.UIAll.BigMessage = C_TxtNoMoreInfected;
+    BigMessage = C_TxtNoMoreInfected;
     MB_SectionRoundNb -= 1;
 } else {
-    UIManager.UIAll.BigMessage    = C_TxtTimeLimitReached;
-    UIManager.UIAll.StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(Players.count - G_InfectedPlayerCount));
+    BigMessage    = C_TxtTimeLimitReached;
+    StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(Players.count - G_InfectedPlayerCount));
 }
+UIManager.UIAll.BigMessage    = BigMessage;
+UIManager.UIAll.StatusMessage = StatusMessage;
 
 // Check for limits
-if(S_ScoreLimit > 0) {
+if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
+    MB_StopMap();
+} else if(S_ScoreLimit > 0) {
     foreach(Player in Players) {
         if(Player.Score != Null && Player.Score.Points >= S_ScoreLimit) {
             MB_StopMap();
@@ -820,18 +837,10 @@ if(S_ScoreLimit > 0) {
     }
 }
 
-if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
-    MB_StopMap();
-}
+MB_Sleep(C_RoundPauseTime);
 
-ITree::Loop();
-Top::Loop();
-Scores::RoundEnd();
-
-sleep(C_RoundPauseTime);
-
-UIManager.UIAll.StatusMessage        = "";
 UIManager.UIAll.BigMessage           = "";
+UIManager.UIAll.StatusMessage        = "";
 UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::Normal;
 
 SM::UnspawnAllPlayers();
@@ -888,7 +897,7 @@ UIManager.UIAll.BigMessageSound         = CUIConfig::EUISound::EndRound;
 UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::ForcedVisible;
 UIManager.UIAll.UISequence              = CUIConfig::EUISequence::Podium;
 
-sleep(C_MatchPauseTime);
+MB_Sleep(C_MatchPauseTime);
 
 UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::Normal;
 UIManager.UIAll.BigMessage              = "";
