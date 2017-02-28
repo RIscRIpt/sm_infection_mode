@@ -24,6 +24,8 @@
 #Const Version    "2017-02-22"
 #Const ScriptName "Infection.Script.txt"
 
+//TODO: move all scores logic to a separate library
+
 #Include "TextLib" as TL
 #Include "MathLib" as ML
 #Include "Libs/Nadeo/Layers2.Script.txt" as Layers
@@ -36,6 +38,8 @@
 #Include "Libs/Nadeo/ShootMania/SpawnScreen.Script.txt" as SpawnScreen
 #Include "Libs/Nadeo/Manialink.Script.txt" as Manialink
 #Include "Libs/RIscRIpt/InfectionTree.Script.txt" as ITree
+
+#Command Command_SetWarmup                  (Text)      as "<hidden>"
 
 #Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
@@ -249,6 +253,9 @@
 // Globals
 /* -------------------------------------- */
 
+declare Boolean G_IsWarmup;
+declare Boolean G_RestartingMatch;
+
 declare Integer G_PrevPlayerProcTime;
 declare Boolean G_InfectionStarted;
 
@@ -326,6 +333,7 @@ ST::SetFormat(C_ST_Columns, C_ST_Rows);
 ST::SetTextScale(C_ST_Scale);
 ST::SetSize(C_ST_Size_Header, C_ST_Size_Contents, C_ST_Size_Footer);
 
+//TODO: setup scripts for automatic update
 ST::CreateCol(C_ST_Col_Id_Status       , C_ST_Col_Legend_Status       , C_ST_Col_DefVal_Status       , C_ST_Col_Width_Status       , C_ST_Col_Weight_Status);
 ST::CreateCol(C_ST_Col_Id_SurvivalTime , C_ST_Col_Legend_SurvivalTime , C_ST_Col_DefVal_SurvivalTime , C_ST_Col_Width_SurvivalTime , C_ST_Col_Weight_SurvivalTime);
 ST::CreateCol(C_ST_Col_Id_Infections   , C_ST_Col_Legend_Infections   , C_ST_Col_DefVal_Infections   , C_ST_Col_Width_Infections   , C_ST_Col_Weight_Infections);
@@ -359,9 +367,6 @@ Layers::Attach(C_MainManialinkLayer);
 
 ***StartMap***
 ***
-UseClans       = S_UseClans;
-UseForcedClans = S_UseClans;
-
 // Required for manialink clan colors
 Teams[C_SurvivorTeamId].ColorPrimary = C_SurvivorColor;
 Teams[C_InfectedTeamId].ColorPrimary = C_InfectedColor;
@@ -421,21 +426,6 @@ foreach(Landmark in MapLandmarks) {
     }
 }
 
-ST::ClearScores();
-Scores::MatchBegin();
-
-Top::ResetAll();
-
-foreach(Player in Players) {
-    declare Integer Match_Infections for Player;
-    declare Integer Match_Hits       for Player;
-    declare Integer Match_Survivals  for Player;
-
-    Match_Infections = 0;
-    Match_Hits       = 0;
-    Match_Survivals  = 0;
-}
-
 declare ModeName = "Infection";
 SpawnScreen::SetModeName(ModeName);
 SpawnScreen::AddSubsection("Rules", C_TxtRules, 0.);
@@ -474,10 +464,33 @@ SpawnScreen::CreateScores();
 SpawnScreen::CreatePrettyRules(ModeName);
 ***
 
+***InitSubmatch***
+***
+Scores::MatchBegin();
+Top::ResetAll();
+ST::ClearScores();
+ITree::Clear();
+
+foreach(Player in Players) {
+    declare Integer Match_Infections for Player;
+    declare Integer Match_Hits       for Player;
+    declare Integer Match_Survivals  for Player;
+
+    Match_Infections = 0;
+    Match_Hits       = 0;
+    Match_Survivals  = 0;
+}
+
+G_RestartingMatch = False;
+***
+
 ***InitRound***
 ***
 G_PrevPlayerProcTime = -1;
-G_InfectionStarted      = False;
+G_InfectionStarted   = False;
+
+UseClans       = S_UseClans;
+UseForcedClans = S_UseClans;
 
 UseSameWallJump  = S_UseSameWallJump;
 UsePvPWeapons    = !S_PursuitMode;
@@ -500,33 +513,7 @@ Message::CleanAllMessages();
 G_FirstInfectedId     = NullId;
 G_InfectedPlayerCount = 0;
 
-foreach(Player in AllPlayers) {
-    declare netwrite Boolean Net_Infected     for Player;
-    declare netwrite Real Net_NearestSurvivor for Player;
-
-    declare Ident InfectorId      for Player;
-    declare Boolean Infected      for Player;
-    declare Integer SpawnTime     for Player;
-    declare Integer InfectionTime for Player;
-
-    declare Integer Round_Infections for Player;
-    declare Integer Round_Hits       for Player;
-    declare Integer Round_Survivals  for Player;
-
-    Net_Infected        = False;
-    Net_NearestSurvivor = 0.0;
-
-    InfectorId          = NullId;
-    Infected            = False;
-    SpawnTime           = -1;
-    InfectionTime       = -1;
-
-    Round_Infections = 0;
-    Round_Hits       = 0;
-    Round_Survivals  = 0;
-}
-
-UpdateModeStatusMessage();
+InitializePlayers();
 
 StartTime = Now + 1000;
 if(IsOperating()) {
@@ -540,12 +527,14 @@ if(IsOperating()) {
         UpdateGateStatus(Gate, True);
     }
 } else {
-    // Not enough players
     EndTime = -1;
-    Message::SetDefaultBigMessage(C_TxtWaitingPlayers);
-    Message::SetDefaultStatusMessage(
-        TL::Compose(C_TxtAtLeastNPlayersNeeded, TL::ToText(C_MinimalPlayerCount))
-    );
+
+    if(Players.count < C_MinimalPlayerCount) {
+        Message::SetDefaultBigMessage(C_TxtWaitingPlayers);
+        Message::SetDefaultStatusMessage(
+            TL::Compose(C_TxtAtLeastNPlayersNeeded, TL::ToText(C_MinimalPlayerCount))
+        );
+    }
 
     // Open all gates
     foreach(Gate in G_CondGates_Up_EachRound) {
@@ -657,8 +646,9 @@ foreach(Event in PendingEvents) {
         case CSmModeEvent::EType::OnHit:
         {
             if(Event.Shooter == Event.Victim
-            || IsProtectedByMap(Event.Victim))
-            {
+            || IsProtectedByMap(Event.Victim)
+            || !IsOperating()
+            ) {
                 Discard(Event);
                 continue;
             }
@@ -687,6 +677,12 @@ foreach(Event in PendingEvents) {
             } else {
                 // OnInfectedHitInfected
                 Discard(Event);
+            }
+        }
+        case CSmModeEvent::EType::OnCommand:
+        {
+            switch(Event.CommandName) {
+                case "Command_SetWarmup": SetWarmup(Event.CommandValueText);
             }
         }
         default:
@@ -790,61 +786,70 @@ if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount 
 
 ***EndRound***
 ***
-StartTime = -1;
-EndTime   = -1;
-
-if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
-    declare FirstInfected <=> Players[G_FirstInfectedId];
-    Scores::AddPoints(FirstInfected, ML::NearestInteger(G_InfectedPlayerCount * S_RewardFirstInfected));
-}
-
-Scores::RoundEnd();
-Top::Loop();
-ITree::Loop();
-
-// Clean UI
-Message::SetDefaultAllMessages("");
-Message::CleanAllMessages();
-
-// Display result
-UIManager.UIAll.UISequence           = CUIConfig::EUISequence::EndRound;
-UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::EndRound;
-UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::ForcedVisible;
-
-declare Text BigMessage    = "";
-declare Text StatusMessage = "";
-if(G_InfectedPlayerCount >= Players.count) {
-    BigMessage = C_TxtAllPlayersInfected;
-} else if(G_InfectedPlayerCount == 0) {
-    BigMessage = C_TxtNoMoreInfected;
-    MB_SectionRoundNb -= 1;
-} else {
-    BigMessage    = C_TxtTimeLimitReached;
-    StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(Players.count - G_InfectedPlayerCount));
-}
-UIManager.UIAll.BigMessage    = BigMessage;
-UIManager.UIAll.StatusMessage = StatusMessage;
-
-// Check for limits
-if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
-    MB_StopMap();
-} else if(S_ScoreLimit > 0) {
-    foreach(Player in Players) {
-        if(Player.Score != Null && Player.Score.Points >= S_ScoreLimit) {
-            MB_StopMap();
-            break;
-        }
-    }
-}
-
-MB_Sleep(C_RoundPauseTime);
-
-UIManager.UIAll.BigMessage           = "";
-UIManager.UIAll.StatusMessage        = "";
-UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::Normal;
 
 SM::UnspawnAllPlayers();
 DestroyAllBotPlayers();
+
+if(G_IsWarmup) {
+    log(TL::Compose(C_UnexpectedBehaviour, "EndRound, when G_IsWarmup == True"));
+}
+
+StartTime = -1;
+EndTime   = -1;
+
+if(!G_RestartingMatch) {
+    if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
+        declare FirstInfected <=> Players[G_FirstInfectedId];
+        Scores::AddPoints(FirstInfected, ML::NearestInteger(G_InfectedPlayerCount * S_RewardFirstInfected));
+    }
+
+    Scores::RoundEnd();
+    Top::Loop();
+    ITree::Loop();
+
+    // Clean UI
+    Message::SetDefaultAllMessages("");
+    Message::CleanAllMessages();
+
+    // Display result
+    UIManager.UIAll.UISequence           = CUIConfig::EUISequence::EndRound;
+    UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::EndRound;
+    UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::ForcedVisible;
+
+    declare Text BigMessage    = "";
+    declare Text StatusMessage = "";
+    if(G_InfectedPlayerCount >= Players.count) {
+        BigMessage = C_TxtAllPlayersInfected;
+    } else if(G_InfectedPlayerCount == 0) {
+        BigMessage = C_TxtNoMoreInfected;
+        MB_SectionRoundNb -= 1;
+    } else {
+        BigMessage    = C_TxtTimeLimitReached;
+        StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(Players.count - G_InfectedPlayerCount));
+    }
+    UIManager.UIAll.BigMessage    = BigMessage;
+    UIManager.UIAll.StatusMessage = StatusMessage;
+
+    // Check for limits
+    if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
+        MB_StopMap();
+    } else if(S_ScoreLimit > 0) {
+        foreach(Player in Players) {
+            if(Player.Score != Null && Player.Score.Points >= S_ScoreLimit) {
+                MB_StopMap();
+                break;
+            }
+        }
+    }
+
+    MB_Sleep(C_RoundPauseTime);
+
+    UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::Silence;
+    UIManager.UIAll.BigMessage           = "";
+    UIManager.UIAll.StatusMessage        = "";
+    UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::Normal;
+}
+
 ***
 
 ***EndMap***
@@ -923,7 +928,7 @@ ST::Unload();
 
 // IsOperating returns whether the Script can operate in a normal mode
 Boolean IsOperating() {
-    return Players.count >= C_MinimalPlayerCount;
+    return !G_IsWarmup && Players.count >= C_MinimalPlayerCount;
 }
 
 Boolean IsInfected(CSmPlayer _Player) {
@@ -1494,6 +1499,7 @@ Void ManageInfectedPlayer(CSmPlayer _Infected) {
     Net_NearestSurvivor = 1.0 - MinDetectDist / S_SurvivorDetectorMaxDist;
 }
 
+//TODO: use Message:: here
 Void ManageMapLeaver(CSmPlayer _Player) {
     if(S_CanLeaveMapFor < 0) {
         return;
@@ -1894,6 +1900,40 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
     }
 }
 
+// Initializes all players, and un-infects them
+Void InitializePlayers() {
+    foreach(Player in AllPlayers) {
+        declare netwrite Boolean Net_Infected     for Player;
+        declare netwrite Real Net_NearestSurvivor for Player;
+
+        declare Ident InfectorId      for Player;
+        declare Boolean Infected      for Player;
+        declare Integer SpawnTime     for Player;
+        declare Integer InfectionTime for Player;
+
+        declare Integer LeftMapSince for _Player;
+
+        Net_Infected        = False;
+        Net_NearestSurvivor = 0.0;
+
+        InfectorId          = NullId;
+        Infected            = False;
+        SpawnTime           = -1;
+        InfectionTime       = -1;
+
+        LeftMapSince = -1;
+
+        if(_Victim.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
+            if(S_RespawnOnInfection) {
+                UnspawnPlayer(Player);
+            } else {
+                InitSurvivor(_Victim);
+                SetupSurvivorWeapons(_Victim);
+            }
+        }
+    }
+}
+
 Void OperativePlayLoop() {
     declare CSmPlayer[] UnspawnedPlayers;
 
@@ -1954,6 +1994,50 @@ Void NonoperationalPlayLoop() {
 
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
+}
+
+Void SetWarmup(Text _Message) {
+    if(_Message != "") {
+        declare Messages = TL::Split(";", _Message);
+
+        declare Text BigMessage    = "";
+        declare Text StatusMessage = "";
+
+        if(Messages.count > 0)
+            BigMessage = Messages[0];
+        if(Messages.count > 1)
+            StatusMessage = Messages[1];
+
+        Message::SetDefaultBigMessage(BigMessage);
+        Message::SetDefaultStatusMessage(StatusMessage);
+
+        if(G_IsWarmup)
+            return;
+        G_IsWarmup = True;
+
+        EndTime = -1;
+
+        InitializePlayers();
+
+        // Open all gates
+        foreach(Gate in G_CondGates_Up_EachRound) {
+            SetGateOpened(Gate, True);
+        }
+        foreach(Gate in G_CondGates_Up_Always) {
+            SetGateOpened(Gate, True);
+        }
+    } else {
+        Message::SetDefaultBigMessage("");
+        Message::SetDefaultStatusMessage("");
+
+        if(!G_IsWarmup)
+            return;
+        G_IsWarmup = False;
+
+        G_RestartingMatch = True;
+        MB_StopSubmatch();
+        MB_SectionSubmatchNb -= 1;
+    }
 }
 
 Void InfectionXmlRpcLoop() {
