@@ -1325,7 +1325,6 @@ Void ManageInfectedPlayer(CSmPlayer _Infected) {
     Net_NearestSurvivor = 1.0 - MinDetectDist / S_SurvivorDetectorMaxDist;
 }
 
-//TODO: use Message:: here
 Void ManageMapLeaver(CSmPlayer _Player) {
     if(S_CanLeaveMapFor < 0) {
         return;
@@ -1341,8 +1340,13 @@ Void ManageMapLeaver(CSmPlayer _Player) {
             LeftMapSince = Now;
         }
         if(Now - LeftMapSince < S_CanLeaveMapFor) {
-            PlayerUI.BigMessage    = C_TxtGetBackToBattleField;
-            PlayerUI.StatusMessage = TL::Compose(C_TxtYouWillBeInfectedInX, TL::ToText(S_CanLeaveMapFor / 1000 - ML::FloorInteger((Now - LeftMapSince) / 1000.0)));
+            Message::SendBigMessage(_Player, C_TxtGetBackToBattleField, 1000, 2);
+            Message::SendStatusMessage(
+                    _Player,
+                    TL::Compose(C_TxtYouWillBeInfectedInX, TL::ToText(S_CanLeaveMapFor / 1000 - ML::FloorInteger((Now - LeftMapSince) / 1000.0))),
+                    1000,
+                    2
+                    );
         } else {
             Infect(_Player, C_TxtPlayerWasEliminated);
         }
