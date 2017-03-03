@@ -35,8 +35,7 @@
 #Include "Libs/RIscRIpt/InfectionTree.Script.txt" as ITree
 #Include "Libs/RIscRIpt/InfectionScores.Script.txt" as IScores
 
-#Command Command_SetWarmup                  (Text)      as "<hidden>"
-
+#Setting S_Pause                            ""          as "<hidden>" //as "enable pause (bigmessage; statusmessage)"
 #Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
 #Setting S_SphericalInfectionDistance       -1.0 /*1.30384*/ as "<hidden>" //as "spherical infection distance"
@@ -190,7 +189,7 @@
 // Globals
 /* -------------------------------------- */
 
-declare Boolean G_IsWarmup;
+declare Boolean G_IsPaused;
 declare Boolean G_RestartingMatch;
 
 declare Integer G_PrevPlayerProcTime;
@@ -559,15 +558,16 @@ foreach(Event in PendingEvents) {
                 Discard(Event);
             }
         }
-        case CSmModeEvent::EType::OnCommand:
-        {
-            switch(Event.CommandName) {
-                case "Command_SetWarmup": SetWarmup(Event.CommandValueText);
-            }
-        }
         default:
             PassOn(Event);
     }
+}
+
+// Should be a command, but maniascript doesn't support hidden commands
+if(G_IsPaused && S_Pause == ""
+|| !G_IsPaused && S_Pause != "")
+{
+    SetPause(S_Pause);
 }
 
 // Should be in `***Yield***`, but it depends on InfectByLogin
@@ -670,8 +670,8 @@ if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount 
 SM::UnspawnAllPlayers();
 DestroyAllBotPlayers();
 
-if(G_IsWarmup) {
-    log(TL::Compose(C_UnexpectedBehaviour, "EndRound, when G_IsWarmup == True"));
+if(G_IsPaused) {
+    log(TL::Compose(C_UnexpectedBehaviour, "EndRound, when G_IsPaused == True"));
 }
 
 StartTime = -1;
@@ -807,7 +807,7 @@ IScores::Unload();
 
 // IsOperating returns whether the Script can operate in a normal mode
 Boolean IsOperating() {
-    return !G_IsWarmup && Players.count >= C_MinimalPlayerCount;
+    return !G_IsPaused && Players.count >= C_MinimalPlayerCount;
 }
 
 Boolean IsInfected(CSmPlayer _Player) {
@@ -1826,7 +1826,7 @@ Void NonoperationalPlayLoop() {
         SpawnAndInitPlayers(UnspawnedPlayers);
 }
 
-Void SetWarmup(Text _Message) {
+Void SetPause(Text _Message) {
     if(_Message != "") {
         declare Messages = TL::Split(";", _Message);
 
@@ -1841,9 +1841,9 @@ Void SetWarmup(Text _Message) {
         Message::SetDefaultBigMessage(BigMessage);
         Message::SetDefaultStatusMessage(StatusMessage);
 
-        if(G_IsWarmup)
+        if(G_IsPaused)
             return;
-        G_IsWarmup = True;
+        G_IsPaused = True;
 
         EndTime = -1;
 
@@ -1860,9 +1860,9 @@ Void SetWarmup(Text _Message) {
         Message::SetDefaultBigMessage("");
         Message::SetDefaultStatusMessage("");
 
-        if(!G_IsWarmup)
+        if(!G_IsPaused)
             return;
-        G_IsWarmup = False;
+        G_IsPaused = False;
 
         G_RestartingMatch = True;
         MB_StopSubmatch();
