@@ -566,10 +566,10 @@ foreach(Event in PendingEvents) {
 }
 
 // Should be a command, but maniascript doesn't support hidden commands
-if(G_IsPaused && !S_Paused
-|| !G_IsPaused && S_Paused)
-{
-    SetPause(S_PauseMessage, S_PauseKeepResultsOnUnpause);
+if(S_Paused && !G_IsPaused) {
+    Pause();
+} else if(!S_Paused && G_IsPaused) {
+    Unpause();
 }
 
 // Should be in `***Yield***`, but it depends on InfectByLogin
@@ -1823,52 +1823,52 @@ Void NonoperationalPlayLoop() {
         SpawnAndInitPlayers(UnspawnedPlayers);
 }
 
-Void SetPause(Text _Message, Boolean _KeepResults) {
-    if(_Message != "") {
-        declare Messages = TL::Split(";", _Message);
+Void Pause() {
+    if(G_IsPaused)
+        return;
+    G_IsPaused = True;
 
-        declare Text BigMessage    = "";
-        declare Text StatusMessage = "";
+    declare Messages = TL::Split(";", S_PauseMessage);
 
-        if(Messages.count > 0)
-            BigMessage = Messages[0];
-        if(Messages.count > 1)
-            StatusMessage = Messages[1];
+    declare Text BigMessage    = "";
+    declare Text StatusMessage = "";
 
-        Message::SetDefaultBigMessage(BigMessage);
-        Message::SetDefaultStatusMessage(StatusMessage);
+    if(Messages.count > 0)
+        BigMessage = Messages[0];
+    if(Messages.count > 1)
+        StatusMessage = Messages[1];
 
-        if(G_IsPaused)
-            return;
-        G_IsPaused = True;
+    Message::SetDefaultBigMessage(BigMessage);
+    Message::SetDefaultStatusMessage(StatusMessage);
 
-        EndTime = -1;
+    EndTime = -1;
 
-        InitializePlayers();
+    InitializePlayers();
 
-        // Open all gates
-        foreach(Gate in G_CondGates_Up_EachRound) {
-            SetGateOpened(Gate, True);
-        }
-        foreach(Gate in G_CondGates_Up_Always) {
-            SetGateOpened(Gate, True);
-        }
+    // Open all gates
+    foreach(Gate in G_CondGates_Up_EachRound) {
+        SetGateOpened(Gate, True);
+    }
+    foreach(Gate in G_CondGates_Up_Always) {
+        SetGateOpened(Gate, True);
+    }
+}
+
+Void Unpause() {
+    if(!G_IsPaused)
+        return;
+    G_IsPaused = False;
+
+    Message::SetDefaultBigMessage("");
+    Message::SetDefaultStatusMessage("");
+
+    G_Unpausing = True;
+    if(S_PauseKeepResultsOnUnpause) {
+        MB_StopRound();
+        MB_SectionRoundNb -= 1;
     } else {
-        Message::SetDefaultBigMessage("");
-        Message::SetDefaultStatusMessage("");
-
-        if(!G_IsPaused)
-            return;
-        G_IsPaused = False;
-
-        G_Unpausing = True;
-        if(_KeepResults) {
-            MB_StopRound();
-            MB_SectionRoundNb -= 1;
-        } else {
-            MB_StopSubmatch();
-            MB_SectionSubmatchNb -= 1;
-        }
+        MB_StopSubmatch();
+        MB_SectionSubmatchNb -= 1;
     }
 }
 
