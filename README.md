@@ -61,7 +61,20 @@ This gate is updated during the round (`A`), and it is opened by default (`O`), 
 TODO: add documentation
 
 ## Tornado
-TODO: add documentation
+To enable tornado in the map, some landmark with the following tag must be placed on the map:
+```
+Tornado_radius
+```
+Where `radius` is a radius of the tornado measured in `1/8` of a block.
+The center of the tornado matches the center of the landmark with such tag.
+
+*Please note*: you can put no more than one tornado in a map.
+
+#### Example
+```
+Tornado_80
+```
+Enables tornado in the map with the radius of 10 blocks.
 
 ## Map settings
 To edit some map properties, or specify infection mode settings you must place some landmark (a block which can have a tag), and edit its tag according to the following syntax:
