@@ -35,7 +35,9 @@
 #Include "Libs/RIscRIpt/InfectionTree.Script.txt" as ITree
 #Include "Libs/RIscRIpt/InfectionScores.Script.txt" as IScores
 
-#Setting S_Pause                            ""          as "<hidden>" //as "enable pause (bigmessage; statusmessage)"
+#Setting S_Paused                           False       as "<hidden>" //as "enable pause"
+#Setting S_PauseMessage                     ""          as "<hidden>" //as "pause message (bigmessage; statusmessage)"
+#Setting S_PauseKeepResultsOnUnpause        True        as "<hidden>" //as "keep results on unpause"
 #Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
 #Setting S_SphericalInfectionDistance       -1.0 /*1.30384*/ as "<hidden>" //as "spherical infection distance"
@@ -190,7 +192,7 @@
 /* -------------------------------------- */
 
 declare Boolean G_IsPaused;
-declare Boolean G_RestartingMatch;
+declare Boolean G_Unpausing;
 
 declare Integer G_PrevPlayerProcTime;
 declare Boolean G_InfectionStarted;
@@ -360,8 +362,6 @@ SpawnScreen::CreatePrettyRules(ModeName);
 ***
 IScores::MatchBegin();
 ITree::Clear();
-
-G_RestartingMatch = False;
 ***
 
 ***InitRound***
@@ -427,6 +427,8 @@ if(IsOperating()) {
 
 // Clear infection tree
 ITree::Clear();
+
+G_Unpausing = False;
 ***
 
 
@@ -564,10 +566,10 @@ foreach(Event in PendingEvents) {
 }
 
 // Should be a command, but maniascript doesn't support hidden commands
-if(G_IsPaused && S_Pause == ""
-|| !G_IsPaused && S_Pause != "")
+if(G_IsPaused && !S_Paused
+|| !G_IsPaused && S_Paused)
 {
-    SetPause(S_Pause);
+    SetPause(S_PauseMessage, S_PauseKeepResultsOnUnpause);
 }
 
 // Should be in `***Yield***`, but it depends on InfectByLogin
@@ -670,21 +672,16 @@ if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount 
 SM::UnspawnAllPlayers();
 DestroyAllBotPlayers();
 
-if(G_IsPaused) {
-    log(TL::Compose(C_UnexpectedBehaviour, "EndRound, when G_IsPaused == True"));
-}
-
 StartTime = -1;
 EndTime   = -1;
 
-if(!G_RestartingMatch) {
+if(!G_Unpausing) {
     if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
         declare FirstInfected <=> Players[G_FirstInfectedId];
         IScores::AddPoints(FirstInfected, ML::NearestInteger(G_InfectedPlayerCount * S_RewardFirstInfected));
     }
 
     IScores::RoundEnd();
-    ITree::Loop();
 
     // Clean UI
     Message::SetDefaultAllMessages("");
@@ -1826,7 +1823,7 @@ Void NonoperationalPlayLoop() {
         SpawnAndInitPlayers(UnspawnedPlayers);
 }
 
-Void SetPause(Text _Message) {
+Void SetPause(Text _Message, Boolean _KeepResults) {
     if(_Message != "") {
         declare Messages = TL::Split(";", _Message);
 
@@ -1864,9 +1861,14 @@ Void SetPause(Text _Message) {
             return;
         G_IsPaused = False;
 
-        G_RestartingMatch = True;
-        MB_StopSubmatch();
-        MB_SectionSubmatchNb -= 1;
+        G_Unpausing = True;
+        if(_KeepResults) {
+            MB_StopRound();
+            MB_SectionRoundNb -= 1;
+        } else {
+            MB_StopSubmatch();
+            MB_SectionSubmatchNb -= 1;
+        }
     }
 }
 
