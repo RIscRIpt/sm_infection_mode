@@ -35,6 +35,10 @@
 #Const  C_ST_Color_Survivor             <0.5, 0.1, 0.1>
 #Const  C_ST_Color_Infected             <0.1, 0.5, 0.1>
 
+#Const  C_ST_Color_Infections           <0.0, 0.5, 0.0>
+#Const  C_ST_Color_Hits                 <1.0, 0.0, 0.0>
+#Const  C_ST_Color_Survivals            <1.0, 1.0, 0.0>
+
 #Const  C_ST_Col_Id_Status              "Stts"
 #Const  C_ST_Col_Id_SurvivalTime        "SrvT"
 #Const  C_ST_Col_Id_Infections          "Infs"
@@ -136,17 +140,17 @@ if(Net_LibIS_SurvivalTime >= 0) {
 
     ST::SetColScript(C_ST_Col_Id_Infections, """
 declare netread Integer Net_LibIS_Round_Infections for _Score = 0;
-Label_Col.Value = TL::ToText(Net_LibIS_Round_Infections);
+Label_Col.Value = "$" ^ TL::ColorToText({{{C_ST_Color_Infections}}}) ^ TL::ToText(Net_LibIS_Round_Infections);
 """);
 
     ST::SetColScript(C_ST_Col_Id_Hits, """
 declare netread Integer Net_LibIS_Round_Hits for _Score = 0;
-Label_Col.Value = TL::ToText(Net_LibIS_Round_Hits);
+Label_Col.Value = "$" ^ TL::ColorToText({{{C_ST_Color_Hits}}}) ^ TL::ToText(Net_LibIS_Round_Hits);
 """);
 
     ST::SetColScript(C_ST_Col_Id_Survivals, """
 declare netread Integer Net_LibIS_Round_Survivals for _Score = 0;
-Label_Col.Value = TL::ToText(Net_LibIS_Round_Survivals);
+Label_Col.Value = "$" ^ TL::ColorToText({{{C_ST_Color_Survivals}}}) ^ TL::ToText(Net_LibIS_Round_Survivals);
 """);
 
     ST::SetColTextAlign(C_ST_Col_Id_Status       , C_ST_Col_Align_Status);
