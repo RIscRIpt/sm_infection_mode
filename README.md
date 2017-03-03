@@ -7,6 +7,8 @@ To make some landmark *conditional*, you must set its **Tag** according to the f
 ## Conditional gates
 Conditional gates are gates in the map which are opened or closed depending on the current server status (for example number of infected players).
 
+Conditional gates are recommended for use with the *conditional spawns*!
+
 ### Tag Syntax
 ```
 Gate_X:Y:Z
@@ -58,7 +60,41 @@ This gate is updated during the round (`A`), and it is opened by default (`O`), 
 *Please note*: without explicitly allowing gates to be closed during the round, such gate will be always opened!
 
 ## Conditional spawns
-TODO: add documentation
+Conditional spawns are spawns which are used by the script depending on the current server status (for example number of infected players).
+
+Conditional spawns are recommended for use with the *conditional gates*!
+
+### Tag syntax
+```
+Spawn_who:when
+```
+Where `who` can be:
+- `P`layers (survivors and infected)
+- `S`urvivors only
+- `I`nfected only
+
+And `when` matches the conditional gates syntax. (see above)
+
+#### Examples
+```
+Spawn
+```
+All players can be spawned in this spawn landmark.
+
+```
+Spawn_I
+```
+Only infected players can be spawned in this spawn landmark (`I`).
+
+```
+Spawn_I:S=1
+```
+Only infected players can be spawned in this spawn landmark (`I`), ***and*** only if current number of survivor players equals to one (`S=1`).
+
+```
+Spawn_P:P>10
+```
+All players can be spawned in this spawn landmark, only if there are more than 10 players on the server (`P>10`).
 
 ## Tornado
 To enable tornado in the map, some landmark with the following tag must be placed on the map:
