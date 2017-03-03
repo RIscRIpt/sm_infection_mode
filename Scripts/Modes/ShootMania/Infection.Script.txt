@@ -24,8 +24,6 @@
 #Const Version    "2017-02-22"
 #Const ScriptName "Infection.Script.txt"
 
-//TODO: move all scores logic to a separate library
-
 #Include "TextLib" as TL
 #Include "MathLib" as ML
 #Include "Libs/Nadeo/Layers2.Script.txt" as Layers
