@@ -129,6 +129,7 @@ G:C
 This can be read as `G`ates are allowed to be `C`losed during the round.
 
 ### Map water effects
+***Please note***: map water effects are applied only if the player is swimming in the water. Touching the water does nothing.
 ```
 W:players=effect
 ```
