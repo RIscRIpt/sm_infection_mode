@@ -1,0 +1,273 @@
+#Const Version    "2017-03-10"
+#Const ScriptName "Infection.Script.txt"
+
+#Include "TextLib" as TL
+#Include "MathLib" as ML
+#Include "Libs/Nadeo/Top2.Script.txt" as Top
+#Include "Libs/Nadeo/ScoresTable2.Script.txt" as ST
+#Include "Libs/Nadeo/ShootMania/Score.Script.txt" as Scores
+
+#Const  C_Status_Spectator              0
+#Const  C_Status_Survivor               1
+#Const  C_Status_Infected               2
+
+#Const  C_TxtUnkTime                    "--:--.--"
+#Const  C_TxtSurvivor                   "$f00Survivor"
+#Const  C_TxtInfected                   "$080Infected"
+#Const  C_TxtSpectator                  "$aaaSpectator"
+#Const  C_TxtUnknown                    "$888Unknown"
+
+#Const  C_TopHits                       "Hits"
+#Const  C_TitleTopHits                  "Top Hits"
+#Const  C_TopInfections                 "Infs"
+#Const  C_TitleTopInfections            "Top Infections"
+#Const  C_TopSurivals                   "Srvs"
+#Const  C_TitleTopSurvivals             "Top Survivals"
+
+#Const  C_ST_Columns                    2
+#Const  C_ST_Rows                       8
+
+#Const  C_ST_Scale                      0.95
+#Const  C_ST_Size_Header                <-1.0, -1.0>
+#Const  C_ST_Size_Contents              <-1.0, -1.0>
+#Const  C_ST_Size_Footer                <-1.0, -1.0>
+
+#Const  C_ST_Color_Survivor             <0.5, 0.1, 0.1>
+#Const  C_ST_Color_Infected             <0.1, 0.5, 0.1>
+
+#Const  C_ST_Col_Id_Status              "Stts"
+#Const  C_ST_Col_Id_SurvivalTime        "SrvT"
+#Const  C_ST_Col_Id_Infections          "Infs"
+#Const  C_ST_Col_Id_Hits                "Hits"
+#Const  C_ST_Col_Id_Survivals           "Srvs"
+
+#Const  C_ST_Col_Legend_Status          "Status"
+#Const  C_ST_Col_Legend_SurvivalTime    "Survival Time"
+#Const  C_ST_Col_Legend_Infections      "Inf"
+#Const  C_ST_Col_Legend_Hits            "Hit"
+#Const  C_ST_Col_Legend_Survivals       "Srv"
+
+#Const  C_ST_Col_DefVal_Status          "$f00Survivor"
+#Const  C_ST_Col_DefVal_SurvivalTime    "--:--.--"
+#Const  C_ST_Col_DefVal_Infections      "$0800"
+#Const  C_ST_Col_DefVal_Hits            "$f000"
+#Const  C_ST_Col_DefVal_Survivals       "$ff00"
+
+#Const  C_ST_Col_Width_Status           8.0
+#Const  C_ST_Col_Width_SurvivalTime     8.0
+#Const  C_ST_Col_Width_Infections       1.8
+#Const  C_ST_Col_Width_Hits             1.8
+#Const  C_ST_Col_Width_Survivals        1.8
+
+#Const  C_ST_Col_Weight_Status          50.0
+#Const  C_ST_Col_Weight_SurvivalTime    60.0
+#Const  C_ST_Col_Weight_Infections      70.0
+#Const  C_ST_Col_Weight_Hits            71.0
+#Const  C_ST_Col_Weight_Survivals       72.0
+
+#Const  C_ST_Col_Align_Status           CMlControl::AlignHorizontal::Left
+#Const  C_ST_Col_Align_SurvivalTime     CMlControl::AlignHorizontal::HCenter
+#Const  C_ST_Col_Align_Infections       CMlControl::AlignHorizontal::Right
+#Const  C_ST_Col_Align_Hits             CMlControl::AlignHorizontal::HCenter
+#Const  C_ST_Col_Align_Survivals        CMlControl::AlignHorizontal::Left
+
+Integer Id_Status_Spectator() { return C_Status_Spectator; }
+Integer Id_Status_Survivor()  { return C_Status_Survivor;  }
+Integer Id_Status_Infected()  { return C_Status_Infected;  }
+
+Text GetScriptVersion() {
+    return Version;
+}
+
+Text GetScriptName() {
+    return ScriptName;
+}
+
+Void Load() {
+    Top::Load();
+    Top::SetTopWidth(65.);
+    declare Real TopXPosition = -62.5;
+    declare Real TopYPosition = 42.;
+    declare Real TopXOffset = 65.;
+    declare Integer PlayersNbPerTop = 14;
+    declare Text TopBGImg = "file://Media/Manialinks/Shootmania/Common/topsBg.dds";
+    Top::SetLayerType(CUILayer::EUILayerType::AltMenu);
+    Top::Create(C_TopHits, C_TitleTopHits, PlayersNbPerTop, <TopXPosition, TopYPosition>);
+    TopXPosition += TopXOffset;
+    Top::Create(C_TopInfections, C_TitleTopInfections, PlayersNbPerTop, <TopXPosition, TopYPosition>);
+    TopXPosition += TopXOffset;
+    Top::Create(C_TopSurivals, C_TitleTopSurvivals, PlayersNbPerTop, <TopXPosition, TopYPosition>);
+    Top::SetLayerType(CUILayer::EUILayerType::AltMenu);
+
+    ST::Load();
+    ST::SetStyle("LibST_Base");
+    ST::SetStyle("LibST_SMBaseSolo");
+    ST::SetStyle("LibST_SMBasePoints");
+    ST::SetStyle("LibST_SMWithLegends");
+
+    ST::SetFormat(C_ST_Columns, C_ST_Rows);
+    ST::SetTextScale(C_ST_Scale);
+    ST::SetSize(C_ST_Size_Header, C_ST_Size_Contents, C_ST_Size_Footer);
+
+    ST::CreateCol(C_ST_Col_Id_Status       , C_ST_Col_Legend_Status       , C_ST_Col_DefVal_Status       , C_ST_Col_Width_Status       , C_ST_Col_Weight_Status);
+    ST::CreateCol(C_ST_Col_Id_SurvivalTime , C_ST_Col_Legend_SurvivalTime , C_ST_Col_DefVal_SurvivalTime , C_ST_Col_Width_SurvivalTime , C_ST_Col_Weight_SurvivalTime);
+    ST::CreateCol(C_ST_Col_Id_Infections   , C_ST_Col_Legend_Infections   , C_ST_Col_DefVal_Infections   , C_ST_Col_Width_Infections   , C_ST_Col_Weight_Infections);
+    ST::CreateCol(C_ST_Col_Id_Hits         , C_ST_Col_Legend_Hits         , C_ST_Col_DefVal_Hits         , C_ST_Col_Width_Hits         , C_ST_Col_Weight_Hits);
+    ST::CreateCol(C_ST_Col_Id_Survivals    , C_ST_Col_Legend_Survivals    , C_ST_Col_DefVal_Survivals    , C_ST_Col_Width_Survivals    , C_ST_Col_Weight_Survivals);
+
+    ST::SetColScript(C_ST_Col_Id_Status, """
+declare netread Integer Net_LibIS_Status for _Score = -1;
+switch(Net_LibIS_Status) {
+    case {{{C_Status_Survivor}}}  : Label_Col.Value = "{{{C_TxtSurvivor}}}";
+    case {{{C_Status_Infected}}}  : Label_Col.Value = "{{{C_TxtInfected}}}";
+    case {{{C_Status_Spectator}}} : Label_Col.Value = "{{{C_TxtSpectator}}}";
+    default: Label_Col.Value = "{{{C_TxtUnknown}}}";
+}
+""");
+
+    ST::SetColScript(C_ST_Col_Id_SurvivalTime, """
+declare netread Integer Net_LibIS_SurvivalTime for _Score = -1;
+if(Net_LibIS_SurvivalTime >= 0) {
+    Label_Col.Value = TL::TimeToText(Net_LibIS_SurvivalTime, True);
+} else {
+    Label_Col.Value = "{{{C_TxtUnkTime}}}";
+}
+""");
+
+    ST::SetColScript(C_ST_Col_Id_Infections, """
+declare netread Integer Net_LibIS_Round_Infections for _Score = 0;
+Label_Col.Value = TL::ToText(Net_LibIS_Round_Infections);
+""");
+
+    ST::SetColScript(C_ST_Col_Id_Hits, """
+declare netread Integer Net_LibIS_Round_Hits for _Score = 0;
+Label_Col.Value = TL::ToText(Net_LibIS_Round_Hits);
+""");
+
+    ST::SetColScript(C_ST_Col_Id_Survivals, """
+declare netread Integer Net_LibIS_Round_Survivals for _Score = 0;
+Label_Col.Value = TL::ToText(Net_LibIS_Round_Survivals);
+""");
+
+    ST::SetColTextAlign(C_ST_Col_Id_Status       , C_ST_Col_Align_Status);
+    ST::SetColTextAlign(C_ST_Col_Id_SurvivalTime , C_ST_Col_Align_SurvivalTime);
+    ST::SetColTextAlign(C_ST_Col_Id_Infections   , C_ST_Col_Align_Infections);
+    ST::SetColTextAlign(C_ST_Col_Id_Hits         , C_ST_Col_Align_Hits);
+    ST::SetColTextAlign(C_ST_Col_Id_Survivals    , C_ST_Col_Align_Survivals);
+
+    ST::GetLayer().Type = CUILayer::EUILayerType::Normal;
+
+    ST::Build("SM");
+}
+
+Void FilterLogins(Text[] _Logins) {
+    ST::FilterLogins(_Logins);
+}
+
+Void MatchBegin() {
+    Scores::MatchBegin();
+    ST::ClearScores();
+    Top::ResetAll();
+
+    foreach(Player in Players) {
+        declare netwrite    Integer Net_LibIS_Status           for Player.Score;
+        declare netwrite    Integer Net_LibIS_SurvivalTime     for Player.Score;
+        declare netwrite    Integer Net_LibIS_Round_Survivals  for Player.Score;
+        declare netwrite    Integer Net_LibIS_Round_Hits       for Player.Score;
+        declare netwrite    Integer Net_LibIS_Round_Infections for Player.Score;
+        declare /*netwrite*/Integer Net_LibIS_Match_Survivals  for Player.Score;
+        declare /*netwrite*/Integer Net_LibIS_Match_Hits       for Player.Score;
+        declare /*netwrite*/Integer Net_LibIS_Match_Infections for Player.Score;
+
+        Net_LibIS_Status           = C_Status_Survivor;
+        Net_LibIS_SurvivalTime     = -1;
+        Net_LibIS_Round_Survivals  = 0;
+        Net_LibIS_Round_Hits       = 0;
+        Net_LibIS_Round_Infections = 0;
+        Net_LibIS_Match_Survivals  = 0;
+        Net_LibIS_Match_Hits       = 0;
+        Net_LibIS_Match_Infections = 0;
+    }
+}
+
+Void RoundBegin() {
+    Scores::RoundBegin();
+
+    foreach(Player in Players) {
+        declare netwrite    Integer Net_LibIS_Status           for Player.Score;
+        declare netwrite    Integer Net_LibIS_SurvivalTime     for Player.Score;
+        declare netwrite    Integer Net_LibIS_Round_Survivals  for Player.Score;
+        declare netwrite    Integer Net_LibIS_Round_Hits       for Player.Score;
+        declare netwrite    Integer Net_LibIS_Round_Infections for Player.Score;
+
+        Net_LibIS_Status           = C_Status_Survivor;
+        Net_LibIS_SurvivalTime     = -1;
+        Net_LibIS_Round_Survivals  = 0;
+        Net_LibIS_Round_Hits       = 0;
+        Net_LibIS_Round_Infections = 0;
+    }
+}
+
+Void AddPoints(CSmPlayer _Player, Integer _Points) {
+    Scores::AddPoints(_Player, _Points);
+}
+
+Void SetStatus(CSmPlayer _Player, Integer _Status) {
+    declare netwrite Integer Net_LibIS_Status for _Player.Score = -1;
+    Net_LibIS_Status = _Status;
+}
+
+Void SetSurvivalTime(CSmPlayer _Player, Integer _Time) {
+    declare netwrite Integer Net_LibIS_SurvivalTime for _Player.Score = -1;
+    Net_LibIS_SurvivalTime = _Time;
+}
+
+Void IncSurvivals(CSmPlayer _Player, Integer _Points) {
+    declare /*netwrite*/ Integer Net_LibIS_Match_Survivals for _Player.Score = 0;
+    declare netwrite Integer Net_LibIS_Round_Survivals for _Player.Score = 0;
+
+    Net_LibIS_Match_Survivals += 1;
+    Net_LibIS_Round_Survivals += 1;
+
+    Top::SetRecord(_Player, C_TopSurivals, TL::ToText(Net_LibIS_Match_Survivals), -Net_LibIS_Match_Survivals);
+    Scores::AddPoints(_Player, _Points);
+}
+
+Void IncHits(CSmPlayer _Player, Integer _Points) {
+    declare /*netwrite*/ Integer Net_LibIS_Match_Hits for _Player.Score = 0;
+    declare netwrite Integer Net_LibIS_Round_Hits for _Player.Score = 0;
+
+    Net_LibIS_Match_Hits += _Points;
+    Net_LibIS_Round_Hits += _Points;
+
+    Top::SetRecord(_Player, C_TopHits, TL::ToText(Net_LibIS_Match_Hits), -Net_LibIS_Match_Hits);
+    Scores::AddPoints(_Player, _Points);
+}
+
+Void IncInfections(CSmPlayer _Player, Integer _Points) {
+    declare /*netwrite*/ Integer Net_LibIS_Match_Infections for _Player.Score = 0;
+    declare netwrite Integer Net_LibIS_Round_Infections for _Player.Score = 0;
+
+    Net_LibIS_Match_Infections += 1;
+    Net_LibIS_Round_Infections += 1;
+
+    Top::SetRecord(_Player, C_TopInfections, TL::ToText(Net_LibIS_Match_Infections), -Net_LibIS_Match_Infections);
+    Scores::AddPoints(_Player, _Points);
+}
+
+Void RoundEnd() {
+    Scores::RoundEnd();
+}
+
+Void MatchEnd() {
+    Scores::MatchEnd();
+}
+
+Void Unload() {
+    ST::Unload();
+}
+
+Void Loop() {
+    Top::Loop();
+}
+
