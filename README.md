@@ -64,12 +64,40 @@ TODO: add documentation
 TODO: add documentation
 
 ## Map settings
+To edit some map properties, or specify infection mode settings you must place some landmark (a block which can have a tag), and edit its tag according to the following syntax:
+
+The tag of a landmark must begin with:
+```
+Settings_
+```
+and after you can specify following settigns delimited with semicolon (`;`):
+
 ### Global gates settings
 #### Allowing gates to be closed during the round
 ```
 G:C
 ```
 This can be read as `G`ates are allowed to be `C`losed during the round.
+
+### Map water effects
+```
+W:players=effect
+```
+Where `players` can be:
+  - `S`urvivors;
+  - `I`nfected.
+
+And `effect` can be:
+- `E`liminate (a player gets eliminated)
+- `P`rotect (a player cannot be hit or infected)
+- `I`nfect (a survivor player gets infected)
+- `H`eal (a player is healed like standing on a healpad)
+
+#### Example
+```
+Settings_W:S=I;W:I=H;W:I=P
+```
+Survivors get infected in the water (`S=I`), infected players are healed in the water (`I=H`), infected players cannot be hit in the water (`I=P`).
 
 ## How to change landmark tag?
 1. Enable block properties mode:
