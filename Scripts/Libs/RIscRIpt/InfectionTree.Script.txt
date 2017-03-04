@@ -261,7 +261,7 @@ Text Private_GenerateManialink() {
         }
 
         Void FreeNode(CMlFrame _Node) {
-            Node_Background(_Node).Visible   = False;
+            Node_Background(_Node).Visible  = False;
             Node_PlayerName(_Node).Visible  = False;
             Node_ParentArrow(_Node).Visible = False;
             _Node.Visible                   = False;
@@ -302,7 +302,7 @@ Text Private_GenerateManialink() {
                 declare dY    = _Pos.Y - _ParentPos.Y;
                 declare dX    = _Pos.X - _ParentPos.X - C_NodeWidth;
 
-                Arrow.RelativePosition.X -= C_NodeWidth / 2.0;
+                Arrow.RelativePosition.X  = -C_NodeWidth / 2.0;
                 Arrow.RelativeRotation    = -180.0 * ML::Atan2(dY, dX) / ML::PI();
                 Arrow.Size                = <ML::Sqrt(dX*dX + dY*dY), C_LineThickness>;
                 Arrow.Visible             = True;
