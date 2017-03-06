@@ -451,6 +451,8 @@ if(IsOperating()) {
     foreach(Gate in G_CondGates_Up_Always) {
         UpdateGateStatus(Gate, True);
     }
+
+    CalcAndDisplayInfChance();
 } else {
     EndTime = -1;
 
@@ -651,6 +653,8 @@ if(Prev_PlayerCount != Players.count) {
     G_InfectedPlayerCount = CountInfected();
 
     UpdateTablePlayers();
+
+    CalcAndDisplayInfChance();
 }
 if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
     PlayerCountChanged = True;
@@ -903,18 +907,10 @@ Real SigmoidProbability(Real _X, Real _Max) {
                    );
 }
 
-CSmPlayer GetFirstInfected() {
-    if(G_FirstInfectedId != NullId) {
-        if(Players.existskey(G_FirstInfectedId)) {
-            return Players[G_FirstInfectedId];
-        }
-        G_FirstInfectedId = NullId;
-    }
-
+Void CalcAndDisplayInfChance() {
     declare Integer IMaxPoints = -1;
     declare Real    RMaxPoints = -1.0;
     declare Real    SumProb    = 0.0;
-    declare Real    RandomNum;
 
     // Find Max Score
     foreach(Player in Players) {
@@ -935,7 +931,29 @@ CSmPlayer GetFirstInfected() {
         SumProb += ProbFirstInf;
     }
 
-    RandomNum = RealRandom(SumProb);
+    // Normalize probabilities and display them
+    foreach(Player in Players) {
+        declare Real ProbFirstInf for Player = 0.0;
+        ProbFirstInf /= SumProb;
+
+        Message::SendStatusMessage(
+            Player,
+            TL::Compose("Your chance of being infected: $080%1%%", TL::ToText(ML::NearestInteger(ProbFirstInf * 100.0))),
+            EndTime - Now,
+            1
+        );
+    }
+}
+
+CSmPlayer GetFirstInfected() {
+    if(G_FirstInfectedId != NullId) {
+        if(Players.existskey(G_FirstInfectedId)) {
+            return Players[G_FirstInfectedId];
+        }
+        G_FirstInfectedId = NullId;
+    }
+
+    declare Real RandomNum = RealRandom(1.0);
     foreach(Player in Players) {
         declare Real ProbFirstInf for Player = 0.0;
         RandomNum -= ProbFirstInf;
