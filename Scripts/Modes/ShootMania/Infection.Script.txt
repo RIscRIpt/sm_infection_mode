@@ -85,6 +85,7 @@
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
+#Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
 
@@ -194,6 +195,8 @@
 // Globals
 /* -------------------------------------- */
 
+declare Boolean G_IsDebugging;
+
 declare Boolean G_IsPaused;
 declare Boolean G_Unpausing;
 
@@ -239,6 +242,8 @@ MB_LogVersion(ITree::GetScriptName()       , ITree::GetScriptVersion());
 
 ***InitServer***
 ***
+G_IsDebugging = S_Debug;
+
 UIManager.UILayerDestroyAll();
 SM::SetupDefaultVisibility();
 UIManager.UIAll.AltMenuNoCustomScores  = True;
@@ -266,6 +271,21 @@ Layers::Attach(C_MainManialinkLayer);
 
 ***StartMap***
 ***
+// Check if script is running in test environment (from map editor or local server)
+if(ServerLogin == "") {
+    // force debug to true
+    G_IsDebugging = True;
+    Debug("Test environment detected! Forcing S_Debug to True.");
+} else {
+    if(G_IsDebugging && !S_Debug) {
+        Debug("Debugging disabled!");
+    }
+    G_IsDebugging = S_Debug;
+    if(S_Debug) {
+        Debug("Debugging enabled!");
+    }
+}
+
 // Required for manialink clan colors
 Teams[C_SurvivorTeamId].ColorPrimary = C_SurvivorColor;
 Teams[C_InfectedTeamId].ColorPrimary = C_InfectedColor;
@@ -294,6 +314,7 @@ G_MapSetting_WaterForInfected_Heals       = False;
 G_MapSetting_GatesCanBeClosedDuringRound  = False;
 
 foreach(Landmark in MapLandmarks) {
+    Debug("Checking landmark `" ^ Landmark.Tag ^ "`");
     declare Tags = TL::Split("_", Landmark.Tag);
     switch(Tags[0]) {
         case "Spawn":
@@ -305,6 +326,10 @@ foreach(Landmark in MapLandmarks) {
             if(Tags.count == 2) {
                 OffZoneCenterLandmarkId = Landmark.Id;
                 OffZoneRadius = TL::ToReal(Tags[1]);
+
+                Debug("Tornado radius: " ^ OffZoneRadius);
+            } else {
+                Debug("Tornado has no radius");
             }
         }
         case "Gate":
@@ -406,7 +431,7 @@ StartTime = Now + 1000;
 if(IsOperating()) {
     EndTime = Now + 1000 + S_PreparationTime;
 
-    // Update conditional gates (allow opening)
+    // Update conditional gates (allow closing)
     foreach(Gate in G_CondGates_Up_EachRound) {
         UpdateGateStatus(Gate, True);
     }
@@ -808,6 +833,13 @@ UIManager.UILayerDestroyAll();
 
 IScores::Unload();
 ***
+
+Void Debug(Text _Message) {
+    if(G_IsDebugging) {
+        UIManager.UIAll.SendChat("$fff[Infection] " ^ _Message);
+        log("[Infection] " ^ _Message);
+    }
+}
 
 // IsOperating returns whether the Script can operate in a normal mode
 Boolean IsOperating() {
@@ -1400,6 +1432,8 @@ Boolean SetupLandmarkConditions(CSmMapLandmark _Landmark, Text _TextConditions) 
     declare Text[] SplitOR;
     declare Text[] SplitAND;
 
+    Debug("Setting up conditions `" ^ _TextConditions ^ "` for landmark `" ^ _Landmark.Tag ^ "`");
+
     SplitOR = TL::Split("|", _TextConditions);
     foreach(ORConds in SplitOR) {
         SplitAND = TL::Split("&", ORConds);
@@ -1453,14 +1487,13 @@ Boolean SetupLandmarkConditions(CSmMapLandmark _Landmark, Text _TextConditions) 
         Conditions[Conditions.count - 1][C_Cond_Chain] = C_Cond_Chain_None;
     }
 
+    Debug("Landmark `" ^ _Landmark.Tag ^ "` has " ^ Conditions.count ^ " condition(s): " ^ Conditions);
+
     return Conditions.count > 0;
 }
 
 Boolean SetupGateConditions(CSmMapLandmark _Gate) {
     declare Text[] Split;
-    declare Integer[][] Conditions for _Gate;
-    declare Boolean DefaultOpened  for _Gate = False;
-    declare Boolean UpdateAlways   for _Gate = False;
 
     Split = TL::Split("_", _Gate.Tag);
     if(Split.count != 2) {
@@ -1472,11 +1505,17 @@ Boolean SetupGateConditions(CSmMapLandmark _Gate) {
 
     Split = TL::Split(":", Split[1]);
     if(Split.count != 3) {
+        Debug("Gate `" ^ _Gate.Tag ^ "` has incomplete tag! No conditions were specified");
         return False;
     }
 
+    declare Boolean UpdateAlways  for _Gate;
+    declare Boolean DefaultOpened for _Gate;
+
     UpdateAlways  = Split[0] == "A";
     DefaultOpened = Split[1] == "O";
+
+    Debug("Gate `" ^ _Gate.Tag ^ "` :: UpdateAlways=" ^ UpdateAlways ^ " // DefaultOpened=" ^ DefaultOpened);
 
     return SetupLandmarkConditions(_Gate, Split[2]);
 }
@@ -1507,11 +1546,13 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
         switch(Split[0]) {
             case C_Cond_TxtInfected:
             {
+                Debug("Spawn `" ^ _Spawn.Tag ^ "` is for infected players only");
                 G_InfectedSpawns.add(_Spawn);
                 //Gauge.Clan = C_InfectedClanNum;
             }
             case C_Cond_TxtSurvivors:
             {
+                Debug("Spawn `" ^ _Spawn.Tag ^ "` is for survivors only");
                 G_SurvivorSpawns.add(_Spawn);
                 //Gauge.Clan = C_SurvivorClanNum;
             }
@@ -1519,11 +1560,14 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
         }
         if(Split.count > 1) {
             SetupLandmarkConditions(_Spawn, Split[1]);
+        } else {
+            Debug("Spawn `" ^ _Spawn.Tag ^ "` has no conditions");
         }
     } else {
         IsCommonSpawn = True;
     }
     if(IsCommonSpawn) {
+        Debug("Spawn `" ^ _Spawn.Tag ^ "` is common");
         // Add to both lists, because it's common spawn
         G_InfectedSpawns.add(_Spawn);
         G_SurvivorSpawns.add(_Spawn);
@@ -1535,8 +1579,10 @@ Void SetupCustomSpawn(CSmMapLandmark _Spawn) {
 
 Void SetupMapWaterProperties(Text _TxtProperty) {
     declare Text[] Args = TL::Split("=", _TxtProperty);
-    if(Args.count != 2)
+    if(Args.count != 2) {
+        Debug("Map water setting `" ^ _TxtProperty ^ "` is incomplete: no arguments");
         return;
+    }
     switch(Args[0]) {
         case C_Cond_TxtSurvivors:
         {
@@ -1565,13 +1611,35 @@ Void SetupGlobalGatesProperties(Text _TxtProperty) {
 
 Void SetupMapSettings(Text _TxtSettings) {
     declare Text[] Settings = TL::Split(";", _TxtSettings);
+
+    Debug("Setting up map settings: " ^ _TxtSettings);
+
     foreach(Setting in Settings) {
         declare Text[] Args = TL::Split(":", Setting);
         switch(Args[0]) {
             case C_MapSetting_Water: SetupMapWaterProperties(Args[1]);
             case C_MapSetting_Gates: SetupGlobalGatesProperties(Args[1]);
+            default: Debug("Unknown map setting `" ^ Args[0] ^ "`");
         }
     }
+
+    if(G_MapSetting_WaterHasEffects) {
+        Debug("Map water settings for survivors: "
+            ^ "E=" ^ G_MapSetting_WaterForSurvivors_Eliminates ^ " / "
+            ^ "P=" ^ G_MapSetting_WaterForSurvivors_Protects   ^ " / "
+            ^ "H=" ^ G_MapSetting_WaterForSurvivors_Heals      ^ " / "
+            ^ "I=" ^ G_MapSetting_WaterForSurvivors_Infects    ^ " / "
+            );
+        Debug("Map water settings for infected:  "
+            ^ "E=" ^ G_MapSetting_WaterForInfected_Eliminates ^ " / "
+            ^ "P=" ^ G_MapSetting_WaterForInfected_Protects   ^ " / "
+            ^ "H=" ^ G_MapSetting_WaterForInfected_Heals      ^ " / "
+            );
+    } else {
+        Debug("Map water has no effects");
+    }
+
+    Debug("Conditional gates can be closed during the round: " ^ G_MapSetting_GatesCanBeClosedDuringRound);
 }
 
 Integer GetConditionalCount(Integer _Source) {
@@ -1628,20 +1696,33 @@ Void SetGateOpened(CSmMapLandmark _Gate, Boolean _Opened) {
     }
     Gauge.Captured = !_Opened;
     Gate.ManualClosed = !_Opened;
+
+    if(G_IsDebugging) {
+        declare Text TxtStatus;
+        if(_Opened)
+            TxtStatus = "opened";
+        else
+            TxtStatus = "closed";
+        Debug("Gate " ^ _Gate.Tag ^ " has been " ^ TxtStatus);
+    }
 }
 
 Void UpdateGateStatus(CSmMapLandmark _Gate, Boolean _CanClose) {
     declare Integer[][] Conditions for _Gate;
     declare Boolean DefaultOpened  for _Gate = False;
 
-    if(!_CanClose && !_Gate.Gate.ManualClosed)
+    if(!_CanClose && !_Gate.Gate.ManualClosed) {
+        Debug("Updating gate `" ^ _Gate.Tag ^ "` status was blocked!");
         return;
+    }
 
     declare Status = DefaultOpened;
     if(ConditionsAreSatisfied(Conditions)) {
         // Toggle `Status` if the conditions are satisfied
         Status = !Status;
     }
+
+    Debug("Updating gate `" ^ _Gate.Tag ^ "` status. CanClose=" ^ _CanClose ^ " / DefaultOpened=" ^ DefaultOpened ^ " / Open=" ^ Status);
 
     SetGateOpened(_Gate, Status);
 }
@@ -1651,9 +1732,12 @@ CSmMapLandmark[] GetPermittedSpawns(CSmMapLandmark[] _Spawns) {
     foreach(Spawn in _Spawns) {
         declare Integer[][] Conditions for Spawn;
         if(Conditions.count > 0) {
-            if(!ConditionsAreSatisfied(Conditions))
+            if(!ConditionsAreSatisfied(Conditions)) {
+                Debug("Spawn `" ^ Spawn.Tag ^ "` conditions were not satisfied " ^ Conditions);
                 continue;
+            }
         }
+        Debug("Adding spawn `" ^ Spawn.Tag ^ "` to permitted spawns");
         PermittedSpawns.add(Spawn);
     }
     return PermittedSpawns;
@@ -1705,9 +1789,15 @@ Void SpawnAndInitPlayer(CSmMapPlayerSpawn _Spawn, CSmPlayer _Player) {
 Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
     declare CSmMapLandmark[] SurvivorSpawns;
     declare CSmMapLandmark[] InfectedSpawns;
+
+    Debug("Spawning and initializing players ...");
+
     if(IsOperating()) {
         SurvivorSpawns = GetPermittedSpawns(G_SurvivorSpawns);
         InfectedSpawns = GetPermittedSpawns(G_InfectedSpawns);
+        Debug("Specific spawns will be used");
+    } else {
+        Debug("All spawns will be used");
     }
     foreach(Player in _Players) {
         declare CSmMapLandmark[] Spawns;
@@ -1732,8 +1822,12 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
             Spawns = G_AllSpawns;
         }
 
+        declare CSmMapLandmark RandomSpawn <=> Spawns[ML::Rand(0, Spawns.count - 1)];
+
+        Debug("Spawning and initializing player `" ^ Player.Login ^ "` @ `" ^ RandomSpawn.Tag ^ "` // Infected=" ^ IsInfected(Player));
+
         SpawnAndInitPlayer(
-            Spawns[ML::Rand(0, Spawns.count - 1)].PlayerSpawn,
+            RandomSpawn.PlayerSpawn,
             Player
         );
     }
