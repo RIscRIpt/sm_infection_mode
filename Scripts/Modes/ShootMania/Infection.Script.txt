@@ -2008,11 +2008,10 @@ Void InfectionXmlRpcLoop() {
 
 Text GenerateManialink() {
     return """
-        <frame posn="122 -72">
-            <label style="TextRaceChrono" posn="0 0" valign="center" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" text="{{{G_InfectedPlayerCount}}}" id="Infected"/>
-            <label style="TextRaceChrono" posn="1 -3" valign="center" halign="center" textcolor="fff" text="/" />
-            <label style="TextRaceChrono" posn="2 -6" valign="center" halign="left" textcolor="fff" text="{{{Players.count}}}" id="Players"/>
-            <label posn="8 -7" valign="center" halign="left" textcolor="fff" text="infected" />
+        <frame posn="122 -82.5">
+            <label style="TextRaceMessage" posn="0 0" valign="center" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" id="Infected"/>
+            <label style="TextRaceMessage" posn="1 0" valign="center" halign="center" textcolor="fff" text="/" />
+            <label style="TextRaceMessage" posn="2 0" valign="center" halign="left" textcolor="fff" id="Players"/>
         </frame>
 
         <label style="TextTitle1" posn="0 20" halign="center" hidden="true" textcolor="f00" id="Idle_Text">{{{C_IdlePlayerWarning}}}</label>
@@ -2020,9 +2019,9 @@ Text GenerateManialink() {
 
         <frame id="NearestSurvivorFrame">
             <frame>
-                <gauge posn="-21 -87" ratio="0.5" clan="{{{C_InfectedClanNum}}}" sizen="53 8" rot="180" id="NearestSurvivor" />
+                <gauge posn="-21 -87" ratio="1.0" clan="{{{C_InfectedClanNum}}}" sizen="53 8" rot="180" id="NearestSurvivor" />
                 <quad posn="-27 -76 10" sizen="14 14" style="UiSMSpectatorScoreBig" substyle="PlayerIconBg" />
-                <quad posn="-26 -77 11" sizen="12 12" image="file:///Media/Manialinks/ShootMania/Common/MainPlayer.dds" id="SurvivorImage" />
+                <quad posn="-26 -77 11" sizen="12 12" colorize="007f00" image="file:///Media/Manialinks/ShootMania/Common/MainPlayer.dds" id="SurvivorImage" />
             </frame>
             <quad posn="-0.3 0.3 0" sizen="0.6 0.6" bgcolor="fff" />
         </frame>
@@ -2053,17 +2052,25 @@ Text GenerateManialink() {
                 IsSpawned = InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned;
 
                 Label_Infected.Value = TL::ToText(Net_InfectedCount);
-                Label_Players.Value  = TL::ToText(Net_PlayerCount);
+                Label_Players.Value  = TL::ToText(Net_PlayerCount) ^ " infected";
 
-                Frame_NearestSurvivor.Visible = Net_Infected && IsSpawned;
+                if(Net_Infected && IsSpawned) {
+                    if(!Frame_NearestSurvivor.Visible) {
+                        Frame_NearestSurvivor.Visible = True;
+                        NearestSurvivor = 1.0;
+                    }
+                } else {
+                    Frame_NearestSurvivor.Visible = False;
+                }
                 if(Frame_NearestSurvivor.Visible) {
-                    LibManialink_AnimLoop();
                     if(NearestSurvivor != Net_NearestSurvivor) {
                         NearestSurvivor = Net_NearestSurvivor;
 
                         declare Intensity = 0.5 + NearestSurvivor / 2.0;
                         LibManialink_Anim("<gauge id=\"NearestSurvivor\" ratio=\"" ^ ML::Clamp(NearestSurvivor, 0.0, 1.0) ^ "\" />", 200, "EaseInOutQuad");
                         LibManialink_Anim("<quad id=\"SurvivorImage\" colorize=\"" ^ TL::ColorToText(<0.0, Intensity, 0.0>) ^ "\" />", 200, "EaseInOutQuad");
+                    } else {
+                        LibManialink_AnimLoop();
                     }
                 }
 
