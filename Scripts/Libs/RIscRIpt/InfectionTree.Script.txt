@@ -7,6 +7,7 @@
 
 declare CUILayer G_LibInfTree_Layer;
 
+declare Boolean[Text] G_LibInfTree_Infected;
 declare Text[][Text] G_LibInfTree_Graph;
 declare Boolean G_LibInfTree_Updated;
 
@@ -458,6 +459,8 @@ Void Load() {
 }
 
 Void Infect(Text _VictimLogin, Text _InfectorLogin) {
+    if(G_LibInfTree_Infected.existskey(_VictimLogin))
+        return;
     declare InfectorLogin = _InfectorLogin;
     if(InfectorLogin == "") {
         InfectorLogin = C_LibInfTree_FakeRoot;
@@ -465,6 +468,7 @@ Void Infect(Text _VictimLogin, Text _InfectorLogin) {
     if(!G_LibInfTree_Graph.existskey(InfectorLogin))
         G_LibInfTree_Graph[InfectorLogin] = Text[];
     G_LibInfTree_Graph[InfectorLogin].add(_VictimLogin);
+    G_LibInfTree_Infected[_VictimLogin] = True;
     G_LibInfTree_Updated = True;
 }
 
@@ -474,6 +478,7 @@ Void Infect(Text _VictimLogin) {
 
 // Clear infection tree
 Void Clear() {
+    G_LibInfTree_Infected.clear();
     G_LibInfTree_Graph.clear();
     G_LibInfTree_Updated = True;
 }
