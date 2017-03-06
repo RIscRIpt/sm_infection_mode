@@ -79,7 +79,6 @@
 #Setting S_InfectedMaxArmor                 2           as "infected maximum armor"
 #Setting S_RewardFirstInfected              0.5         as "<hidden>" //as ""
 #Setting S_SurvivorDetectorMaxDist          20.0        as "survivor detector max distance"
-#Setting S_RespawnDelay                     1000        as "<hidden>" //as "respawn delay"
 #Setting S_CanLeaveMapFor                   3000        as "can leave battlefield for (ms)"
 #Setting S_ForceSpecAfter                   60000       as "force inactive players to spectators after (ms)"
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
@@ -441,9 +440,9 @@ foreach(Player in AllPlayers) {
     InitializePlayer(Player);
 }
 
-StartTime = Now + 1000;
+StartTime = Now;
 if(IsOperating()) {
-    EndTime = Now + 1000 + S_PreparationTime;
+    EndTime = StartTime + S_PreparationTime;
 
     // Update conditional gates (allow closing)
     foreach(Gate in G_CondGates_Up_EachRound) {
@@ -1771,7 +1770,7 @@ Void SpawnAndInitPlayer(CSmMapPlayerSpawn _Spawn, CSmPlayer _Player) {
     declare Integer ClanNum = 0;
 
     if(SpawnTime == -1) {
-        SpawnTime = Now + S_RespawnDelay;
+        SpawnTime = Now;
     }
 
     if(!Infected) {
