@@ -866,10 +866,6 @@ Integer CountInfected() {
     return Count;
 }
 
-Void OnPlayerCountChanged() {
-
-}
-
 Real ML__FMod(Real _Value, Real _Mod) {
     return _Value - ML::ToReal(ML::FloorInteger(_Value / _Mod)) * _Mod;
 }
