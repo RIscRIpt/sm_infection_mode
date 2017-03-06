@@ -84,6 +84,7 @@
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
+#Setting S_ProtectionQueueSize              1           as "size of protection queue of not being first infected"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
@@ -204,6 +205,8 @@ declare Boolean G_InfectionStarted;
 
 declare Integer G_InfectedPlayerCount;
 declare Ident   G_FirstInfectedId;
+
+declare Ident[] G_ProtectionQueue;
 
 declare CSmMapLandmark[] G_CondGates_Up_Always;
 declare CSmMapLandmark[] G_CondGates_Up_EachRound;
@@ -475,6 +478,8 @@ if(IsOperating()) {
 // Clear infection tree
 ITree::Clear();
 
+CropProtectionQueue();
+
 G_Unpausing = False;
 ***
 
@@ -552,6 +557,9 @@ if(EndTime > -1 && EndTime <= Now) {
             if(!IsInfected(FirstInfected)) {
                 Infect(FirstInfected);
             }
+
+            G_ProtectionQueue.add(FirstInfected.Id);
+            CropProtectionQueue();
 
             Message::SendStatusMessage("$iLet the infection begin...", 4000, 1);
             Message::SendBigMessage(FirstInfected, "$360First Infected!", 4000, 1);
@@ -883,6 +891,18 @@ Integer CountInfected() {
     return Count;
 }
 
+Boolean CropProtectionQueue() {
+    declare Boolean Cropped = False;
+    declare Integer CropTo = S_ProtectionQueueSize;
+    if(CropTo >= Players.count)
+        CropTo = Players.count - 1;
+    while(G_ProtectionQueue.count > CropTo) {
+        G_ProtectionQueue.removekey(0);
+        Cropped = True;
+    }
+    return Cropped;
+}
+
 Real ML__FMod(Real _Value, Real _Mod) {
     return _Value - ML::ToReal(ML::FloorInteger(_Value / _Mod)) * _Mod;
 }
@@ -927,14 +947,22 @@ Void CalcAndDisplayInfChance() {
         declare Real Points = 0.0;
         if(Player.Score != Null)
             Points = ML::ToReal(Player.Score.Points);
-        ProbFirstInf = SigmoidProbability(Points, RMaxPoints);
+        if(!G_ProtectionQueue.exists(Player.Id)) {
+            ProbFirstInf = SigmoidProbability(Points, RMaxPoints);
+        } else {
+            ProbFirstInf = 0.0;
+        }
         SumProb += ProbFirstInf;
     }
 
     // Normalize probabilities and display them
     foreach(Player in Players) {
         declare Real ProbFirstInf for Player = 0.0;
-        ProbFirstInf /= SumProb;
+        if(SumProb > 0.000001) {
+            ProbFirstInf /= SumProb;
+        } else {
+            ProbFirstInf = 1.0 / Players.count;
+        }
 
         Message::SendStatusMessage(
             Player,
@@ -946,6 +974,10 @@ Void CalcAndDisplayInfChance() {
 }
 
 CSmPlayer GetFirstInfected() {
+    if(CropProtectionQueue()) {
+        CalcAndDisplayInfChance();
+    }
+
     if(G_FirstInfectedId != NullId) {
         if(Players.existskey(G_FirstInfectedId)) {
             return Players[G_FirstInfectedId];
