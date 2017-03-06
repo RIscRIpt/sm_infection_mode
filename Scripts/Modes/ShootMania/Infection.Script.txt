@@ -40,7 +40,7 @@
 #Setting S_PauseKeepResultsOnUnpause        True        as "<hidden>" //as "keep results on unpause"
 #Setting S_HorizontalInfectionDistance      0.61        as "<hidden>" //as "horizontal infection distance"
 #Setting S_VerticalInfectionDistance        2.16        as "<hidden>" //as "vertical infection distance"
-#Setting S_SphericalInfectionDistance       -1.0 /*1.30384*/ as "<hidden>" //as "spherical infection distance"
+#Setting S_SphericalInfectionDistance       -1.30384    as "<hidden>" //as "spherical infection distance"
 #Setting S_InfectionScore                   4           as "infection score"
 #Setting S_InfectionArmorBonus              1           as "armor bonus for infection"
 #Setting S_PVP                              False       as "enable PvP for survivors"
@@ -85,7 +85,7 @@
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
 #Setting S_ProtectionQueueSize              1           as "size of protection queue of not being first infected"
-#Setting S_ClosedCondGateValue              0.5         as "<hidden>" //as "value of closed conditional gate"
+#Setting S_ClosedCondGateValue              0.3675      as "<hidden>" //as "value of closed conditional gate"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
