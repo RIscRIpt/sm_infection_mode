@@ -414,6 +414,20 @@ MB_UseSectionRound = True;
 ***
 IScores::RoundBegin();
 
+// Setup scores table footer
+declare Text TxtFooter = "";
+if(S_RoundLimit > 0) {
+    if(TxtFooter != "")
+        TxtFooter ^= "   |   ";
+    TxtFooter ^= _("Round") ^ " " ^ MB_SectionRoundNb ^ "/" ^ S_RoundLimit;
+}
+if(S_ScoreLimit > 0) {
+    if(TxtFooter != "")
+        TxtFooter ^= "   |   ";
+    TxtFooter ^= "Score limit: " ^ S_ScoreLimit;
+}
+IScores::SetTableFooter(TxtFooter);
+
 UIManager.UIAll.UISequence      = CUIConfig::EUISequence::Playing;
 UIManager.UIAll.BigMessageSound = CUIConfig::EUISound::Default;
 

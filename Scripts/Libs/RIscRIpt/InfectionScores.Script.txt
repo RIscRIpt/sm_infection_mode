@@ -170,6 +170,10 @@ Void FilterLogins(Text[] _Logins) {
     ST::FilterLogins(_Logins);
 }
 
+Void SetTableFooter(Text _Text) {
+    ST::SetFooterText(_Text);
+}
+
 Boolean SyncPlayerInfo(CSmPlayer _Player) {
     if(_Player.Score == Null)
         return False;
