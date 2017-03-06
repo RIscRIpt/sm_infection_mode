@@ -85,6 +85,7 @@
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
 #Setting S_ProtectionQueueSize              1           as "size of protection queue of not being first infected"
+#Setting S_ClosedCondGateValue              0.5         as "<hidden>" //as "value of closed conditional gate"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
@@ -1763,7 +1764,7 @@ Void SetGateOpened(CSmMapLandmark _Gate, Boolean _Opened) {
     if(_Opened) {
         Gauge.ValueReal = 0.0;
     } else {
-        Gauge.ValueReal = 1.0;
+        Gauge.ValueReal = S_ClosedCondGateValue;
     }
     Gauge.Captured = !_Opened;
     Gate.ManualClosed = !_Opened;
