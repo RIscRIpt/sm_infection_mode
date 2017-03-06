@@ -75,6 +75,8 @@
 #Const  C_ST_Col_Align_Hits             CMlControl::AlignHorizontal::HCenter
 #Const  C_ST_Col_Align_Survivals        CMlControl::AlignHorizontal::Left
 
+declare Integer G_LibST_RoundId;
+
 Integer Id_Status_Spectator() { return C_Status_Spectator; }
 Integer Id_Status_Survivor()  { return C_Status_Survivor;  }
 Integer Id_Status_Infected()  { return C_Status_Infected;  }
@@ -168,12 +170,42 @@ Void FilterLogins(Text[] _Logins) {
     ST::FilterLogins(_Logins);
 }
 
+Boolean SyncPlayerInfo(CSmPlayer _Player) {
+    if(_Player.Score == Null)
+        return False;
+
+    declare Integer Net_LibIS_Sync_RoundNb for _Player.Score = -1;
+
+    if(G_LibST_RoundId == Net_LibIS_Sync_RoundNb)
+        return False;
+
+    declare netwrite Integer Net_LibIS_Status           for _Player.Score;
+    declare netwrite Integer Net_LibIS_SurvivalTime     for _Player.Score;
+    declare netwrite Integer Net_LibIS_Round_Survivals  for _Player.Score;
+    declare netwrite Integer Net_LibIS_Round_Hits       for _Player.Score;
+    declare netwrite Integer Net_LibIS_Round_Infections for _Player.Score;
+
+    Net_LibIS_Sync_RoundNb     = G_LibST_RoundId;
+    Net_LibIS_Status           = C_Status_Survivor;
+    Net_LibIS_SurvivalTime     = -1;
+    Net_LibIS_Round_Survivals  = 0;
+    Net_LibIS_Round_Hits       = 0;
+    Net_LibIS_Round_Infections = 0;
+
+    return True;
+}
+
 Void MatchBegin() {
+    G_LibST_RoundId = 0;
+
     Scores::MatchBegin();
     ST::ClearScores();
     Top::ResetAll();
 
-    foreach(Player in Players) {
+    foreach(Player in AllPlayers) {
+        if(Player.Score == Null)
+            continue;
+
         declare netwrite    Integer Net_LibIS_Status           for Player.Score;
         declare netwrite    Integer Net_LibIS_SurvivalTime     for Player.Score;
         declare netwrite    Integer Net_LibIS_Round_Survivals  for Player.Score;
@@ -182,6 +214,7 @@ Void MatchBegin() {
         declare /*netwrite*/Integer Net_LibIS_Match_Survivals  for Player.Score;
         declare /*netwrite*/Integer Net_LibIS_Match_Hits       for Player.Score;
         declare /*netwrite*/Integer Net_LibIS_Match_Infections for Player.Score;
+        declare /*netwrite*/Integer Net_LibIS_Sync_RoundNb     for Player.Score;
 
         Net_LibIS_Status           = C_Status_Survivor;
         Net_LibIS_SurvivalTime     = -1;
@@ -191,24 +224,17 @@ Void MatchBegin() {
         Net_LibIS_Match_Survivals  = 0;
         Net_LibIS_Match_Hits       = 0;
         Net_LibIS_Match_Infections = 0;
+        Net_LibIS_Sync_RoundNb     = -1;
     }
 }
 
 Void RoundBegin() {
+    G_LibST_RoundId += 1;
+
     Scores::RoundBegin();
 
     foreach(Player in Players) {
-        declare netwrite    Integer Net_LibIS_Status           for Player.Score;
-        declare netwrite    Integer Net_LibIS_SurvivalTime     for Player.Score;
-        declare netwrite    Integer Net_LibIS_Round_Survivals  for Player.Score;
-        declare netwrite    Integer Net_LibIS_Round_Hits       for Player.Score;
-        declare netwrite    Integer Net_LibIS_Round_Infections for Player.Score;
-
-        Net_LibIS_Status           = C_Status_Survivor;
-        Net_LibIS_SurvivalTime     = -1;
-        Net_LibIS_Round_Survivals  = 0;
-        Net_LibIS_Round_Hits       = 0;
-        Net_LibIS_Round_Infections = 0;
+        SyncPlayerInfo(Player);
     }
 }
 

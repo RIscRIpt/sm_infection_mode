@@ -242,8 +242,6 @@ MB_LogVersion(ITree::GetScriptName()       , ITree::GetScriptVersion());
 
 ***InitServer***
 ***
-G_IsDebugging = S_Debug;
-
 UIManager.UILayerDestroyAll();
 SM::SetupDefaultVisibility();
 UIManager.UIAll.AltMenuNoCustomScores  = True;
@@ -425,7 +423,9 @@ Message::CleanAllMessages();
 G_FirstInfectedId     = NullId;
 G_InfectedPlayerCount = 0;
 
-InitializePlayers();
+foreach(Player in AllPlayers) {
+    InitializePlayer(Player);
+}
 
 StartTime = Now + 1000;
 if(IsOperating()) {
@@ -471,32 +471,35 @@ MB_UseSectionTurn = False;
 
 ***OnNewPlayer***
 ***
-if(!IsInfected(Player)) {
-    // If should be infected
-    if(G_InfectionStarted && S_InfectNewPlayers) {
+// InitializePlayer only if the sync was required (last sync was @ different round)
+if(IScores::SyncPlayerInfo(Player))
+    InitializePlayer(Player);
+
+if(G_InfectionStarted && S_InfectNewPlayers) {
+    if(!IsInfected(Player)) {
         Infect(Player);
     }
 }
 
-UpdateScores(Player);
+UpdateScoresStatus(Player);
 
 declare UI <=> UIManager.GetUI(Player);
-Tabs::UseTabs(UI, "ScoresTab");
+if(UI != Null) {
+    Tabs::UseTabs(UI, "ScoresTab");
+}
 
 ***
 
 ***OnNewSpectator***
 ***
-UpdateScores(Spectator);
+UpdateScoresStatus(Spectator);
 
 declare UI <=> UIManager.GetUI(Spectator);
-Tabs::UseTabs(UI, "ScoresTab");
-
 if(UI != Null) {
+    Tabs::UseTabs(UI, "ScoresTab");
     UI.SpectatorForcedClan      = 0;
     UI.SpectatorForceCameraType = 15;
 }
-
 ***
 
 ***Yield***
@@ -1065,7 +1068,7 @@ Void UpdateScoresSurvivalTime(CSmPlayer _Player) {
     declare Integer SpawnTime     for _Player = -1;
     declare Integer InfectionTime for _Player = -1;
     declare SurvivalTime = -1;
-    if(IsInfected(_Player)) {
+    if(SpawnTime >= 0 && InfectionTime >= 0 && IsInfected(_Player)) {
         SurvivalTime = InfectionTime - SpawnTime;
     }
     IScores::SetSurvivalTime(_Player, SurvivalTime);
@@ -1143,7 +1146,6 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
     declare Ident InfectorId  for _Victim;
     declare Boolean Infected  for _Victim = S_InfectNewPlayers;
 
-    declare Integer SpawnTime     for _Victim;
     declare Integer InfectionTime for _Victim;
 
     declare Text InfectorLogin = "";
@@ -1394,11 +1396,21 @@ Void ManageMapLeaver(CSmPlayer _Player) {
 }
 
 Void ManageIdlePlayer(CSmPlayer _Player) {
-    if(S_ForceSpecAfter <= 0) {
+    if(S_ForceSpecAfter <= 0 || _Player.IdleDuration < S_ForceSpecAfter) {
         return;
     }
 
-    if(_Player.IdleDuration < S_ForceSpecAfter) {
+    declare UI <=> UIManager.GetUI(_Player);
+    if(UI == Null) {
+        return;
+    }
+
+    if(UI.UISequence != CUIConfig::EUISequence::Playing
+    && UI.UISequence != CUIConfig::EUISequence::None) {
+        return;
+    }
+
+    if(UI.ForceSpectator) {
         return;
     }
 
@@ -1804,7 +1816,7 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
         if(IsOperating()) {
             // New players are already infected if infection has started but have SpawnTime == -1
             // But existing players have SpawnTime != -1 if they respawn.
-            declare Integer SpawnTime for Player;
+            declare Integer SpawnTime for Player = -1;
 
             if(!IsInfected(Player) && SpawnTime != -1 && C_InfectOnRespawn) {
                 if(G_InfectionStarted || S_InfectOnPreparationRespawn) {
@@ -1834,35 +1846,33 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
 }
 
 // Initializes all players, and un-infects them
-Void InitializePlayers() {
-    foreach(Player in AllPlayers) {
-        declare netwrite Boolean Net_Infected     for Player;
-        declare netwrite Real Net_NearestSurvivor for Player;
+Void InitializePlayer(CSmPlayer _Player) {
+    declare netwrite Boolean Net_Infected     for _Player;
+    declare netwrite Real Net_NearestSurvivor for _Player;
 
-        declare Ident InfectorId      for Player;
-        declare Boolean Infected      for Player;
-        declare Integer SpawnTime     for Player;
-        declare Integer InfectionTime for Player;
+    declare Ident InfectorId      for _Player;
+    declare Boolean Infected      for _Player;
+    declare Integer SpawnTime     for _Player;
+    declare Integer InfectionTime for _Player;
 
-        declare Integer LeftMapSince  for Player;
+    declare Integer LeftMapSince  for _Player;
 
-        Net_Infected        = False;
-        Net_NearestSurvivor = 0.0;
+    Net_Infected        = False;
+    Net_NearestSurvivor = 0.0;
 
-        InfectorId          = NullId;
-        Infected            = False;
-        SpawnTime           = -1;
-        InfectionTime       = -1;
+    InfectorId          = NullId;
+    Infected            = False;
+    SpawnTime           = -1;
+    InfectionTime       = -1;
 
-        LeftMapSince = -1;
+    LeftMapSince = -1;
 
-        if(Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
-            if(S_RespawnOnInfection) {
-                UnspawnPlayer(Player);
-            } else {
-                InitSurvivor(Player);
-                SetupSurvivorWeapons(Player);
-            }
+    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
+        if(S_RespawnOnInfection) {
+            UnspawnPlayer(_Player);
+        } else {
+            InitSurvivor(_Player);
+            SetupSurvivorWeapons(_Player);
         }
     }
 }
@@ -1949,7 +1959,9 @@ Void Pause() {
 
     EndTime = -1;
 
-    InitializePlayers();
+    foreach(Player in AllPlayers) {
+        InitializePlayer(Player);
+    }
 
     // Open all gates
     foreach(Gate in G_CondGates_Up_EachRound) {
@@ -2003,8 +2015,8 @@ Text GenerateManialink() {
             <label posn="8 -7" valign="center" halign="left" textcolor="fff" text="infected" />
         </frame>
 
-        <label style="TextTitle1" posn="0 20" halign="center" visible="false" textcolor="f00" id="Idle_Text">{{{C_IdlePlayerWarning}}}</label>
-        <label style="TextRaceChrono" posn="0 15" halign="center" visible="false" id="Idle_Time" />
+        <label style="TextTitle1" posn="0 20" halign="center" hidden="true" textcolor="f00" id="Idle_Text">{{{C_IdlePlayerWarning}}}</label>
+        <label style="TextRaceChrono" posn="0 15" halign="center" hidden="true" id="Idle_Time" />
 
         <frame id="NearestSurvivorFrame">
             <frame>
