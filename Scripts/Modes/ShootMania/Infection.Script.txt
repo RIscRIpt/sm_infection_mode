@@ -353,7 +353,10 @@ foreach(Landmark in MapLandmarks) {
     }
 }
 
-declare ModeName = "Infection";
+declare Text ModeName = C_ModeInfection;
+if(S_PursuitMode)
+    ModeName = C_ModePursuit;
+
 SpawnScreen::SetModeName(ModeName);
 SpawnScreen::AddSubsection("Rules", C_TxtRules, 0.);
 SpawnScreen::AddSubsection("Round end", C_TxtRoundEnd, 30.);
