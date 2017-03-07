@@ -1479,6 +1479,7 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
+    UI.ForceSpectator = True;
     Users_RequestSwitchToSpectator(_Player.User);
     UIManager.UIAll.SendChat(_Player.Name ^ C_WasIdleTooLongMovingToSpec);
     UIManager.UIAll.SendNotice(
