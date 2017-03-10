@@ -191,7 +191,8 @@
 
 #Const   C_MapSetting_Gates                         "G"
 #Const   C_MapSetting_GatesCanBeClosedDuringRound   "C"
-
+#Const   C_Knockout_TxtKickAfterStartMsg    "You are not allowed to join after knockout mode has been started!"
+#Const   C_Knockout_TxtKickWorstScoreMsg    "You had the worst score! You are knocked out!"
 #Const   C_Knockout_TxtPrefix               "$f00[Knockout]$z$s "
 #Const   C_Knockout_Stage_None              0
 #Const   C_Knockout_Stage_Init              1
@@ -724,8 +725,7 @@ if(Prev_PlayerCount != PlayersCount()) {
         if(IsOperating()) {
             foreach(Player in Players) {
                 if(!G_Knockout_Players.exists(Player.Id) && !Player.RequestsSpectate) {
-                    Users_RequestSwitchToSpectator(Player.User);
-                    KnockoutMessage(Player, "You are not allowed to join after knockout mode has been enabled!");
+                    KnockoutUser(Player.User, C_Knockout_TxtKickAfterStartMsg);
                 }
             }
         }
@@ -896,7 +896,7 @@ if(!G_QuickRestart) {
                 foreach(PlayerId => Score in Scores) {
                     declare Player <=> Players[PlayerId];
                     G_Knockout_Players.remove(PlayerId);
-                    Users_RequestSwitchToSpectator(Player.User);
+                    KnockoutUser(Player.User, C_Knockout_TxtKickWorstScoreMsg);
                     if(KnockedPlayers != "")
                         KnockedPlayers ^= "$z$s, ";
                     KnockedPlayers ^= Player.Name;
@@ -2271,10 +2271,19 @@ Void KnockoutMessage(Text _Message) {
     UIManager.UIAll.SendChat(C_Knockout_TxtPrefix ^ _Message);
 }
 
-Void KnockoutMessage(CSmPlayer _Player, Text _Message) {
-    declare UI <=> UIManager.GetUI(_Player);
+Void KnockoutMessage(CUser _User, Text _Message) {
+    declare UI <=> UIManager.GetUI(_User);
     if(UI != Null)
         UI.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutUser(CUser _User, Text _Reason) {
+    if(S_KnockoutMode_Kick) {
+        Admin_KickUser(_User, _Reason);
+    } else {
+        Users_RequestSwitchToSpectator(_User);
+        KnockoutMessage(_User, _Reason);
+    }
 }
 
 Void KnockoutEnable() {
