@@ -442,9 +442,13 @@ MB_UseSectionRound = True;
 IScores::RoundBegin();
 
 if(G_Knockout_Stage == C_Knockout_Stage_Init) {
-    G_Knockout_Stage = C_Knockout_Stage_First;
     foreach(Player in Players) {
         G_Knockout_Players.add(Player.Id);
+    }
+    if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
+        G_Knockout_Stage = C_Knockout_Stage_First;
+    } else {
+        G_Knockout_Stage = C_Knockout_Stage_Last;
     }
 }
 
