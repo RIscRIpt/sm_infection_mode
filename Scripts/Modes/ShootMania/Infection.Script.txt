@@ -2240,9 +2240,11 @@ Void KnockoutEnable() {
     G_Knockout_Players.clear();
     G_Knockout_Stage = C_Knockout_Stage_Init;
     G_Knockout_RoundNb = 0;
-    G_QuickRestart = True;
-    MB_StopSubmatch();
-    MB_SectionSubmatchNb -= 1;
+    if(IsOperating()) {
+        G_QuickRestart = True;
+        MB_StopSubmatch();
+        MB_SectionSubmatchNb -= 1;
+    }
 }
 
 Void KnockoutDisable() {
