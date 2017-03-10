@@ -883,6 +883,7 @@ if(!G_QuickRestart) {
 
             // Knockout
             if(ToKnockout > 0) {
+                declare Text KnockMessage   = "Knocking out $080" ^ ToKnockout ^ "$z$s worst player(s): ";
                 declare Text KnockedPlayers = "";
                 declare Scores = PlayersScore(G_Knockout_Players).sort();
                 foreach(PlayerId => Score in Scores) {
@@ -892,8 +893,11 @@ if(!G_QuickRestart) {
                     if(KnockedPlayers != "")
                         KnockedPlayers ^= "$z$s, ";
                     KnockedPlayers ^= Player.Name;
+                    ToKnockout -= 1;
+                    if(ToKnockout == 0)
+                        break;
                 }
-                KnockoutMessage("Knocking out $080" ^ ToKnockout ^ "$z$s worst player(s): " ^ KnockedPlayers);
+                KnockoutMessage(KnockMessage ^ KnockedPlayers);
             }
 
             if(NewPlayersCount <= S_KnockoutMode_LastStage_Players) {
