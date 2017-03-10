@@ -2249,10 +2249,14 @@ Void KnockoutEnable() {
 
 Void KnockoutDisable() {
     KnockoutMessage("Knockout mode has been disabled.");
+    G_Knockout_Players.clear();
     G_Knockout_Stage = C_Knockout_Stage_None;
-    G_QuickRestart = True;
-    MB_StopSubmatch();
-    MB_SectionSubmatchNb -= 1;
+    G_Knockout_RoundNb = 0;
+    if(IsOperating()) {
+        G_QuickRestart = True;
+        MB_StopSubmatch();
+        MB_SectionSubmatchNb -= 1;
+    }
 }
 
 Text GenerateManialink() {
