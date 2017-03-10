@@ -711,7 +711,7 @@ declare Boolean PlayerCountChanged = False;
 
 // The most reliable way of checking of player count changes.
 // It's done in one place, so updated only once per playloop iteration.
-if(Prev_PlayerCount != PlayersCount()) {
+if(Prev_PlayerCount != Players.count) {
     PlayerCountChanged = True;
 
     if(G_Knockout_Stage > C_Knockout_Stage_Init) {
@@ -875,12 +875,15 @@ if(!G_QuickRestart) {
     } else {
         // Knockout mode limits
 
+        declare Integer ToKnockout = GetNbOfPlayersToKO();
+        declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
+
         if(G_InfectedPlayerCount > 0)
             G_Knockout_RoundNb += 1;
 
         if(G_Knockout_Stage != C_Knockout_Stage_Last) {
             // First stage
-            declare Integer ToKnockout = GetNbOfPlayersToKO();
+
             declare Integer NewPlayersCount = PlayersCount() - ToKnockout;
 
             if(NewPlayersCount < S_KnockoutMode_LastStage_Players) {
@@ -916,7 +919,6 @@ if(!G_QuickRestart) {
             }
         } else {
             // Last stage
-            declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
 
             if(RoundsLeft <= 0) {
                 // End of knockout match
