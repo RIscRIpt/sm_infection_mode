@@ -86,6 +86,11 @@
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
 #Setting S_ProtectionQueueSize              1           as "size of protection queue of not being first infected"
 #Setting S_ClosedCondGateValue              0.3675      as "<hidden>" //as "value of closed conditional gate"
+#Setting S_KnockoutMode                     False       as "enable knockout mode"
+#Setting S_KnockoutMode_FirstStage_Rounds   8           as "number of rounds for first stage knockout"
+#Setting S_KnockoutMode_LastStage_Rounds    5           as "number of rounds for last stage knockout"
+#Setting S_KnockoutMode_LastStage_Players   8           as "number of required players for last stage"
+#Setting S_KnockoutMode_Kick                False       as "knockout method (kick=True, spec=False)"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
@@ -187,6 +192,12 @@
 #Const   C_MapSetting_Gates                         "G"
 #Const   C_MapSetting_GatesCanBeClosedDuringRound   "C"
 
+#Const   C_Knockout_TxtPrefix               "$f00[Knockout]$z$s "
+#Const   C_Knockout_Stage_None              0
+#Const   C_Knockout_Stage_Init              1
+#Const   C_Knockout_Stage_First             10
+#Const   C_Knockout_Stage_Last              20
+
 #Const   C_UnexpectedBehaviour "Unexpected behaviour!\nThis must not happen!\nWhere: %1\nData: %2"
 
 #Const   C_Inf_XmlRpc_InfectByLogin     "Inf_Infect"
@@ -199,7 +210,7 @@
 declare Boolean G_IsDebugging;
 
 declare Boolean G_IsPaused;
-declare Boolean G_Unpausing;
+declare Boolean G_QuickRestart;
 
 declare Integer G_PrevPlayerProcTime;
 declare Boolean G_InfectionStarted;
@@ -229,6 +240,11 @@ declare Boolean G_MapSetting_WaterForInfected_Protects;
 declare Boolean G_MapSetting_WaterForInfected_Heals;
 
 declare Boolean G_MapSetting_GatesCanBeClosedDuringRound;
+
+// For knockout mode
+declare Ident[] G_Knockout_Players;
+declare Integer G_Knockout_Stage;
+declare Integer G_Knockout_RoundNb;
 
 ***LogVersion***
 ***
@@ -314,6 +330,12 @@ G_MapSetting_WaterForInfected_Heals       = False;
 
 G_MapSetting_GatesCanBeClosedDuringRound  = False;
 
+if(S_KnockoutMode) {
+    G_Knockout_Players.clear();
+    G_Knockout_Stage = C_Knockout_Stage_Init;
+    G_Knockout_RoundNb = 0;
+}
+
 foreach(Landmark in MapLandmarks) {
     Debug("Checking landmark `" ^ Landmark.Tag ^ "`");
     declare Tags = TL::Split("_", Landmark.Tag);
@@ -397,7 +419,6 @@ SpawnScreen::CreatePrettyRules(ModeName);
 ***InitSubmatch***
 ***
 IScores::MatchBegin();
-ITree::Clear();
 ***
 
 ***InitRound***
@@ -420,17 +441,37 @@ MB_UseSectionRound = True;
 ***
 IScores::RoundBegin();
 
+if(G_Knockout_Stage == C_Knockout_Stage_Init) {
+    G_Knockout_Stage = C_Knockout_Stage_First;
+    foreach(Player in Players) {
+        G_Knockout_Players.add(Player.Id);
+    }
+}
+
 // Setup scores table footer
 declare Text TxtFooter = "";
-if(S_RoundLimit > 0) {
-    if(TxtFooter != "")
+if(!S_KnockoutMode) {
+    if(S_RoundLimit > 0) {
+        if(TxtFooter != "")
+            TxtFooter ^= "   |   ";
+        TxtFooter ^= _("Round") ^ " " ^ MB_SectionRoundNb ^ "/" ^ S_RoundLimit;
+    }
+    if(S_ScoreLimit > 0) {
+        if(TxtFooter != "")
+            TxtFooter ^= "   |   ";
+        TxtFooter ^= "Score limit: " ^ S_ScoreLimit;
+    }
+} else {
+    if(G_Knockout_Stage != C_Knockout_Stage_Last) {
+        TxtFooter ^= "Knockout stage";
         TxtFooter ^= "   |   ";
-    TxtFooter ^= _("Round") ^ " " ^ MB_SectionRoundNb ^ "/" ^ S_RoundLimit;
-}
-if(S_ScoreLimit > 0) {
-    if(TxtFooter != "")
+        TxtFooter ^= "Required players: " ^ S_KnockoutMode_LastStage_Players;
+    } else {
+        declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
+        TxtFooter ^= "Max points stage";
         TxtFooter ^= "   |   ";
-    TxtFooter ^= "Score limit: " ^ S_ScoreLimit;
+        TxtFooter ^= RoundsLeft ^ " round(s) left";
+    }
 }
 IScores::SetTableFooter(TxtFooter);
 
@@ -460,6 +501,14 @@ if(IsOperating()) {
     }
 
     CalcAndDisplayInfChance();
+
+    if(S_KnockoutMode) {
+        if(G_Knockout_Stage == C_Knockout_Stage_First) {
+            declare Integer ToKnockout = GetNbOfPlayersToKO();
+            if(ToKnockout > 0)
+                KnockoutMessage(ToKnockout ^ " worst player(s) will be knocked out this round!");
+        }
+    }
 } else {
     EndTime = -1;
 
@@ -484,7 +533,7 @@ ITree::Clear();
 
 CropProtectionQueue();
 
-G_Unpausing = False;
+G_QuickRestart = False;
 ***
 
 
@@ -519,11 +568,14 @@ if(UI != Null) {
 UpdateScoresStatus(Spectator);
 
 declare UI <=> UIManager.GetUI(Spectator);
+
 if(UI != Null) {
     Tabs::UseTabs(UI, "ScoresTab");
     UI.SpectatorForcedClan      = 0;
     UI.SpectatorForceCameraType = 15;
 }
+
+UIManager.UIAll.OverlayHideSpectatorInfos = True;
 ***
 
 ***Yield***
@@ -633,6 +685,11 @@ if(S_Paused && !G_IsPaused) {
 } else if(!S_Paused && G_IsPaused) {
     Unpause();
 }
+if(S_KnockoutMode && G_Knockout_Stage == C_Knockout_Stage_None) {
+    KnockoutEnable();
+} else if(!S_KnockoutMode && G_Knockout_Stage != C_Knockout_Stage_None) {
+    KnockoutDisable();
+}
 
 // Should be in `***Yield***`, but it depends on InfectByLogin
 InfectionXmlRpcLoop();
@@ -666,7 +723,26 @@ if(Prev_PlayerCount != Players.count) {
 
     UpdateTablePlayers();
 
-    CalcAndDisplayInfChance();
+    if(!G_InfectionStarted)
+        CalcAndDisplayInfChance();
+
+    if(S_KnockoutMode) {
+        // Cleanup allowed players
+        foreach(PlayerId in G_Knockout_Players) {
+            if(!Players.existskey(PlayerId))
+                G_Knockout_Players.remove(PlayerId);
+        }
+
+        // Check for allowed players
+        if(IsOperating()) {
+            foreach(Player in Players) {
+                if(!G_Knockout_Players.exists(Player.Id) && !Player.RequestsSpectate) {
+                    Users_RequestSwitchToSpectator(Player.User);
+                    KnockoutMessage(Player, "You are not allowed to join after knockout mode has been enabled!");
+                }
+            }
+        }
+    }
 }
 if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
     PlayerCountChanged = True;
@@ -739,7 +815,7 @@ DestroyAllBotPlayers();
 StartTime = -1;
 EndTime   = -1;
 
-if(!G_Unpausing) {
+if(!G_QuickRestart) {
     if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
         declare FirstInfected <=> Players[G_FirstInfectedId];
         IScores::AddPoints(FirstInfected, ML::NearestInteger(G_InfectedPlayerCount * S_RewardFirstInfected));
@@ -771,13 +847,66 @@ if(!G_Unpausing) {
     UIManager.UIAll.StatusMessage = StatusMessage;
 
     // Check for limits
-    if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
-        MB_StopMap();
-    } else if(S_ScoreLimit > 0) {
-        foreach(Player in Players) {
-            if(Player.Score != Null && Player.Score.Points >= S_ScoreLimit) {
+    if(!S_KnockoutMode) {
+        // Regular mode limits
+
+        if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
+            MB_StopMap();
+        } else if(S_ScoreLimit > 0) {
+            foreach(Player in Players) {
+                if(Player.Score != Null && Player.Score.Points >= S_ScoreLimit) {
+                    MB_StopMap();
+                    break;
+                }
+            }
+        }
+
+    } else {
+        // Knockout mode limits
+
+        if(G_InfectedPlayerCount > 0)
+            G_Knockout_RoundNb += 1;
+
+        if(G_Knockout_Stage != C_Knockout_Stage_Last) {
+            // First stage
+            declare Integer ToKnockout = GetNbOfPlayersToKO();
+            declare Integer NewPlayersCount = Players.count - ToKnockout;
+
+            if(NewPlayersCount < S_KnockoutMode_LastStage_Players) {
+                NewPlayersCount = S_KnockoutMode_LastStage_Players;
+                ToKnockout = Players.count - NewPlayersCount;
+            }
+
+            // Knockout
+            if(ToKnockout > 0) {
+                declare Text KnockedPlayers = "";
+                declare Scores = PlayersScore(G_Knockout_Players).sort();
+                foreach(PlayerId => Score in Scores) {
+                    declare Player <=> Players[PlayerId];
+                    G_Knockout_Players.remove(PlayerId);
+                    if(KnockedPlayers != "")
+                        KnockedPlayers ^= "$z$s, ";
+                    KnockedPlayers ^= Player.Name;
+                }
+                KnockoutMessage("Knocking out $080" ^ ToKnockout ^ "$z$s worst player(s): " ^ KnockedPlayers);
+            }
+
+            if(NewPlayersCount <= S_KnockoutMode_LastStage_Players) {
+                G_Knockout_Stage = C_Knockout_Stage_Last;
+                G_Knockout_RoundNb = 0;
+
+                KnockoutMessage("Only $080" ^ NewPlayersCount ^ "$z$s player(s) left!");
+                KnockoutMessage("No more players will be knocked out! Try to get the maximum amount of points to win!");
+            }
+        } else {
+            // Last stage
+            declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
+
+            if(RoundsLeft <= 0) {
+                // End of knockout match
                 MB_StopMap();
-                break;
+            } else {
+                KnockoutMessage(RoundsLeft ^ " round(s) left!");
             }
         }
     }
@@ -900,6 +1029,8 @@ Boolean CropProtectionQueue() {
     declare Integer CropTo = S_ProtectionQueueSize;
     if(CropTo >= Players.count)
         CropTo = Players.count - 1;
+	if(CropTo <= 0)
+		return False;
     while(G_ProtectionQueue.count > CropTo) {
         G_ProtectionQueue.removekey(0);
         Cropped = True;
@@ -1463,6 +1594,10 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
+    if(_Player.RequestsSpectate) {
+        return;
+    }
+
     declare UI <=> UIManager.GetUI(_Player);
     if(UI == Null) {
         return;
@@ -1473,16 +1608,11 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
-    if(UI.ForceSpectator) {
-        return;
-    }
-
     declare Integer SpawnTime for _Player = Now;
     if(Now - SpawnTime < S_CanIdleAfterSpawn) {
         return;
     }
 
-    UI.ForceSpectator = True;
     Users_RequestSwitchToSpectator(_Player.User);
     UIManager.UIAll.SendChat(_Player.Name ^ C_WasIdleTooLongMovingToSpec);
     UIManager.UIAll.SendNotice(
@@ -2044,7 +2174,7 @@ Void Unpause() {
     Message::SetDefaultBigMessage("");
     Message::SetDefaultStatusMessage("");
 
-    G_Unpausing = True;
+    G_QuickRestart = True;
     if(S_PauseKeepResultsOnUnpause) {
         MB_StopRound();
         MB_SectionRoundNb -= 1;
@@ -2052,6 +2182,26 @@ Void Unpause() {
         MB_StopSubmatch();
         MB_SectionSubmatchNb -= 1;
     }
+}
+
+Integer GetNbOfPlayersToKO() {
+    declare Integer RoundsTillLastStage = S_KnockoutMode_FirstStage_Rounds - G_Knockout_RoundNb;
+    if(RoundsTillLastStage <= 0)
+        return 0;
+    return ML::FloorInteger(ML::ToReal(Players.count - S_KnockoutMode_LastStage_Players) / ML::ToReal(RoundsTillLastStage));
+}
+
+Integer[Ident] PlayersScore(Ident[] _PlayerIds) {
+    declare Integer[Ident] Result;
+    foreach(PlayerId in _PlayerIds) {
+        if(!Players.existskey(PlayerId))
+            continue;
+        declare Player <=> Players[PlayerId];
+        if(Player.Score == Null)
+            continue;
+        Result[PlayerId] = Player.Score.Points;
+    }
+    return Result;
 }
 
 Void InfectionXmlRpcLoop() {
@@ -2068,6 +2218,34 @@ Void InfectionXmlRpcLoop() {
             }
         }
     }
+}
+
+Void KnockoutMessage(Text _Message) {
+    UIManager.UIAll.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutMessage(CSmPlayer _Player, Text _Message) {
+    declare UI <=> UIManager.GetUI(_Player);
+    if(UI != Null)
+        UI.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutEnable() {
+    KnockoutMessage("Knockout mode has been enabled!");
+    G_Knockout_Players.clear();
+    G_Knockout_Stage = C_Knockout_Stage_Init;
+    G_Knockout_RoundNb = 0;
+    G_QuickRestart = True;
+    MB_StopSubmatch();
+    MB_SectionSubmatchNb -= 1;
+}
+
+Void KnockoutDisable() {
+    KnockoutMessage("Knockout mode has been disabled.");
+    G_Knockout_Stage = C_Knockout_Stage_None;
+    G_QuickRestart = True;
+    MB_StopSubmatch();
+    MB_SectionSubmatchNb -= 1;
 }
 
 Text GenerateManialink() {
