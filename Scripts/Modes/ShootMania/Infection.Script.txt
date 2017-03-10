@@ -516,7 +516,7 @@ if(IsOperating()) {
 } else {
     EndTime = -1;
 
-    if(Players.count < C_MinimalPlayerCount) {
+    if(PlayersCount() < C_MinimalPlayerCount) {
         Message::SetDefaultBigMessage(C_TxtWaitingPlayers);
         Message::SetDefaultStatusMessage(
             TL::Compose(C_TxtAtLeastNPlayersNeeded, TL::ToText(C_MinimalPlayerCount))
@@ -679,7 +679,9 @@ foreach(Event in PendingEvents) {
             }
         }
         default:
+        {
             PassOn(Event);
+        }
     }
 }
 
@@ -708,29 +710,10 @@ declare Boolean PlayerCountChanged = False;
 
 // The most reliable way of checking of player count changes.
 // It's done in one place, so updated only once per playloop iteration.
-if(Prev_PlayerCount != Players.count) {
+if(Prev_PlayerCount != PlayersCount()) {
     PlayerCountChanged = True;
 
-    if(Prev_PlayerCount < C_MinimalPlayerCount && Players.count >= C_MinimalPlayerCount) {
-        // If it's enough players now, restart round!
-        MB_StopRound();
-    } else if(Prev_PlayerCount >= C_MinimalPlayerCount && Players.count < C_MinimalPlayerCount) {
-        // If it's not enough players now, restart round and display message!
-        MB_StopRound();
-    }
-
-    Prev_PlayerCount = Players.count;
-    Net_PlayerCount  = Prev_PlayerCount;
-
-    // Infected player count might be changed too
-    G_InfectedPlayerCount = CountInfected();
-
-    UpdateTablePlayers();
-
-    if(!G_InfectionStarted)
-        CalcAndDisplayInfChance();
-
-    if(S_KnockoutMode) {
+    if(G_Knockout_Stage > C_Knockout_Stage_Init) {
         // Cleanup allowed players
         foreach(PlayerId in G_Knockout_Players) {
             if(!Players.existskey(PlayerId))
@@ -746,6 +729,30 @@ if(Prev_PlayerCount != Players.count) {
                 }
             }
         }
+
+        if(Prev_PlayerCount == PlayersCount())
+            PlayerCountChanged = False;
+    }
+
+    if(PlayerCountChanged) {
+        if(Prev_PlayerCount < C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount) {
+            // If it's enough players now, restart round!
+            MB_StopRound();
+        } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
+            // If it's not enough players now, restart round and display message!
+            MB_StopRound();
+        }
+
+        Prev_PlayerCount = PlayersCount();
+        Net_PlayerCount  = Prev_PlayerCount;
+
+        // Infected player count might be changed too
+        G_InfectedPlayerCount = CountInfected();
+
+        UpdateTablePlayers();
+
+        if(!G_InfectionStarted)
+            CalcAndDisplayInfChance();
     }
 }
 if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
@@ -772,7 +779,7 @@ if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
         // Get (un)lucky first infected
         declare Integer firstInfectionTime = C_MaxSignedInteger;
         foreach(Infected in Players) {
-            if(!IsInfected(Infected)) {
+            if(!IsInfected(Infected) || !IsAllowedToPlay(Infected)) {
                 continue;
             }
             declare Integer InfectionTime for Infected = Now;
@@ -801,9 +808,9 @@ if(PlayerCountChanged) {
     UpdateModeStatusMessage();
 }
 
-if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= Players.count)) {
+if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= PlayersCount())) {
     // Don't end the round if not enough players
-    if(Players.count >= C_MinimalPlayerCount) {
+    if(PlayersCount() >= C_MinimalPlayerCount) {
         MB_StopRound();
     }
 }
@@ -838,14 +845,14 @@ if(!G_QuickRestart) {
 
     declare Text BigMessage    = "";
     declare Text StatusMessage = "";
-    if(G_InfectedPlayerCount >= Players.count) {
+    if(G_InfectedPlayerCount >= PlayersCount()) {
         BigMessage = C_TxtAllPlayersInfected;
     } else if(G_InfectedPlayerCount == 0) {
         BigMessage = C_TxtNoMoreInfected;
         MB_SectionRoundNb -= 1;
     } else {
         BigMessage    = C_TxtTimeLimitReached;
-        StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(Players.count - G_InfectedPlayerCount));
+        StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(PlayersCount() - G_InfectedPlayerCount));
     }
     UIManager.UIAll.BigMessage    = BigMessage;
     UIManager.UIAll.StatusMessage = StatusMessage;
@@ -874,11 +881,11 @@ if(!G_QuickRestart) {
         if(G_Knockout_Stage != C_Knockout_Stage_Last) {
             // First stage
             declare Integer ToKnockout = GetNbOfPlayersToKO();
-            declare Integer NewPlayersCount = Players.count - ToKnockout;
+            declare Integer NewPlayersCount = PlayersCount() - ToKnockout;
 
             if(NewPlayersCount < S_KnockoutMode_LastStage_Players) {
                 NewPlayersCount = S_KnockoutMode_LastStage_Players;
-                ToKnockout = Players.count - NewPlayersCount;
+                ToKnockout = PlayersCount() - NewPlayersCount;
             }
 
             // Knockout
@@ -1016,6 +1023,20 @@ Boolean IsOperating() {
     return !G_IsPaused && Players.count >= C_MinimalPlayerCount;
 }
 
+Integer PlayersCount() {
+    if(S_KnockoutMode && IsOperating() && G_Knockout_Stage > C_Knockout_Stage_Init) {
+        return G_Knockout_Players.count;
+    }
+    return Players.count;
+}
+
+Boolean IsAllowedToPlay(CSmPlayer _Player) {
+    if(S_KnockoutMode && IsOperating() && G_Knockout_Stage > C_Knockout_Stage_Init) {
+        return G_Knockout_Players.exists(_Player.Id);
+    }
+    return True;
+}
+
 Boolean IsInfected(CSmPlayer _Player) {
     if(_Player != Null) {
         declare Boolean Infected for _Player = False;
@@ -1027,7 +1048,7 @@ Boolean IsInfected(CSmPlayer _Player) {
 Integer CountInfected() {
     declare Integer Count = 0;
     foreach(Player in Players) {
-        if(IsInfected(Player))
+        if(IsInfected(Player) && IsAllowedToPlay(Player))
             Count += 1;
     }
     return Count;
@@ -1036,10 +1057,10 @@ Integer CountInfected() {
 Boolean CropProtectionQueue() {
     declare Boolean Cropped = False;
     declare Integer CropTo = S_ProtectionQueueSize;
-    if(CropTo >= Players.count)
-        CropTo = Players.count - 1;
-	if(CropTo <= 0)
-		return False;
+    if(CropTo >= PlayersCount())
+        CropTo = PlayersCount() - 1;
+    if(CropTo <= 0)
+        return False;
     while(G_ProtectionQueue.count > CropTo) {
         G_ProtectionQueue.removekey(0);
         Cropped = True;
@@ -1078,6 +1099,8 @@ Void CalcAndDisplayInfChance() {
 
     // Find Max Score
     foreach(Player in Players) {
+        if(!IsAllowedToPlay(Player))
+            continue;
         if(Player.Score != Null) {
             if(IMaxPoints < Player.Score.Points)
                 IMaxPoints = Player.Score.Points;
@@ -1087,6 +1110,8 @@ Void CalcAndDisplayInfChance() {
 
     // Calculate probabilities of being chosen
     foreach(Player in Players) {
+        if(!IsAllowedToPlay(Player))
+            continue;
         declare Real ProbFirstInf for Player;
         declare Real Points = 0.0;
         if(Player.Score != Null)
@@ -1101,11 +1126,13 @@ Void CalcAndDisplayInfChance() {
 
     // Normalize probabilities and display them
     foreach(Player in Players) {
+        if(!IsAllowedToPlay(Player))
+            continue;
         declare Real ProbFirstInf for Player = 0.0;
         if(SumProb > 0.000001) {
             ProbFirstInf /= SumProb;
         } else {
-            ProbFirstInf = 1.0 / Players.count;
+            ProbFirstInf = 1.0 / PlayersCount();
         }
 
         Message::SendStatusMessage(
@@ -1131,6 +1158,8 @@ CSmPlayer GetFirstInfected() {
 
     declare Real RandomNum = RealRandom(1.0);
     foreach(Player in Players) {
+        if(!IsAllowedToPlay(Player))
+            continue;
         declare Real ProbFirstInf for Player = 0.0;
         RandomNum -= ProbFirstInf;
         if(RandomNum <= 0.0) {
@@ -1141,7 +1170,7 @@ CSmPlayer GetFirstInfected() {
 
     // This must not happen
     log(TL::Compose(C_UnexpectedBehaviour, "GetFirstInfected", "" ^ RandomNum));
-    if(Players.count > 0) {
+    if(PlayersCount() > 0) {
         G_FirstInfectedId = Players[0].Id;
         return Players[0];
     }
@@ -1290,7 +1319,7 @@ Void UpdateModeStatusMessage() {
 -   $aaa%3$g spectators.
     """,
         TL::ToText(G_InfectedPlayerCount),
-        TL::ToText(Players.count - G_InfectedPlayerCount),
+        TL::ToText(PlayersCount() - G_InfectedPlayerCount),
         TL::ToText(Spectators.count)
     );
 }
@@ -1308,7 +1337,7 @@ Void RewardInfector(CSmPlayer _Infector, Real _Score) {
 
 Void RewardSurvivorsForSurvivingInfection() {
     foreach(Survivor in Players) {
-        if(IsInfected(Survivor))
+        if(IsInfected(Survivor) || !IsAllowedToPlay(Survivor))
             continue;
 
         IScores::IncSurvivals(Survivor, S_ScoreForSurv1Inf);
@@ -1431,11 +1460,11 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
         ITree::Infect(_Victim.Login);
     }
 
-    if(G_InfectedPlayerCount == Players.count - 1) {
+    if(G_InfectedPlayerCount == PlayersCount() - 1) {
         // Get last survivor
         declare CSmPlayer LastSurvivor = Null;
         foreach(Player in Players) {
-            if(!IsInfected(Player)) {
+            if(!IsInfected(Player) && IsAllowedToPlay(Player)) {
                 LastSurvivor = Player;
                 break;
             }
@@ -1859,8 +1888,8 @@ Void SetupMapSettings(Text _TxtSettings) {
 
 Integer GetConditionalCount(Integer _Source) {
     switch(_Source) {
-        case C_Cond_Players   : return Players.count;
-        case C_Cond_Survivors : return Players.count - G_InfectedPlayerCount;
+        case C_Cond_Players   : return PlayersCount();
+        case C_Cond_Survivors : return PlayersCount() - G_InfectedPlayerCount;
         case C_Cond_Infected  : return G_InfectedPlayerCount;
     }
     return 0;
@@ -2017,6 +2046,13 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
     foreach(Player in _Players) {
         declare CSmMapLandmark[] Spawns;
         if(IsOperating()) {
+
+            if(G_Knockout_Stage > C_Knockout_Stage_Init) {
+                // forbid respawning knocked out player
+                if(!G_Knockout_Players.exists(Player.Id))
+                    continue;
+            }
+
             // New players are already infected if infection has started but have SpawnTime == -1
             // But existing players have SpawnTime != -1 if they respawn.
             declare Integer SpawnTime for Player = -1;
@@ -2085,7 +2121,8 @@ Void OperativePlayLoop() {
 
     foreach(Player in Players) {
         if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
-            UnspawnedPlayers.add(Player);
+            if(IsAllowedToPlay(Player))
+                UnspawnedPlayers.add(Player);
             continue;
         }
         if(Player.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned) {
@@ -2133,7 +2170,8 @@ Void NonoperationalPlayLoop() {
 
     foreach(Player in Players) {
         if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
-            UnspawnedPlayers.add(Player);
+            if(IsAllowedToPlay(Player))
+                UnspawnedPlayers.add(Player);
             continue;
         }
     }
@@ -2197,7 +2235,7 @@ Integer GetNbOfPlayersToKO() {
     declare Integer RoundsTillLastStage = S_KnockoutMode_FirstStage_Rounds - G_Knockout_RoundNb;
     if(RoundsTillLastStage <= 0)
         return 0;
-    return ML::FloorInteger(ML::ToReal(Players.count - S_KnockoutMode_LastStage_Players) / ML::ToReal(RoundsTillLastStage));
+    return ML::FloorInteger(ML::ToReal(PlayersCount() - S_KnockoutMode_LastStage_Players) / ML::ToReal(RoundsTillLastStage));
 }
 
 Integer[Ident] PlayersScore(Ident[] _PlayerIds) {
