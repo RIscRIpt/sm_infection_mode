@@ -888,6 +888,7 @@ if(!G_QuickRestart) {
                 foreach(PlayerId => Score in Scores) {
                     declare Player <=> Players[PlayerId];
                     G_Knockout_Players.remove(PlayerId);
+                    Users_RequestSwitchToSpectator(Player.User);
                     if(KnockedPlayers != "")
                         KnockedPlayers ^= "$z$s, ";
                     KnockedPlayers ^= Player.Name;
