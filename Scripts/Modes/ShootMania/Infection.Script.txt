@@ -473,6 +473,7 @@ if(!S_KnockoutMode) {
         RoundsLeft = S_KnockoutMode_FirstStage_Rounds;
     } else {
         TxtFooter ^= "Max points stage";
+        RoundsLeft = S_KnockoutMode_LastStage_Rounds;
     }
     TxtFooter ^= "   |   ";
     RoundsLeft -= G_Knockout_RoundNb;
@@ -493,9 +494,10 @@ Message::CleanAllMessages();
 G_FirstInfectedId     = NullId;
 G_InfectedPlayerCount = 0;
 
-foreach(Player in AllPlayers) {
-    InitializePlayer(Player);
-}
+// Should not be required because of InitializePlayer in OnNewPlayer
+//foreach(Player in AllPlayers) {
+//    InitializePlayer(Player);
+//}
 
 StartTime = Now;
 if(IsOperating()) {
@@ -553,19 +555,28 @@ MB_UseSectionTurn = False;
 
 ***OnNewPlayer***
 ***
-// InitializePlayer only if the sync was required (last sync was @ different round)
-if(IScores::SyncPlayerInfo(Player))
-    InitializePlayer(Player);
 
-if(G_InfectionStarted && S_InfectNewPlayers) {
-    if(!IsInfected(Player)) {
-        Infect(Player);
+declare UI <=> UIManager.GetUI(Player);
+
+if(IsAllowedToPlay(Player)) {
+    if(UI != Null) {
+        UI.ForceSpectator = False;
     }
+    // InitializePlayer only if the sync was required (last sync was @ different round)
+    if(IScores::SyncPlayerInfo(Player)) {
+        InitializePlayer(Player);
+    }
+    if(G_InfectionStarted && S_InfectNewPlayers) {
+        if(!IsInfected(Player)) {
+            Infect(Player);
+        }
+    }
+} else {
+    KnockoutUser(Player.User, C_Knockout_TxtKickAfterStartMsg);
 }
 
 UpdateScoresStatus(Player);
 
-declare UI <=> UIManager.GetUI(Player);
 if(UI != Null) {
     Tabs::UseTabs(UI, "ScoresTab");
 }
@@ -724,40 +735,24 @@ if(Prev_PlayerCount != Players.count) {
             if(!Players.existskey(PlayerId))
                 G_Knockout_Players.remove(PlayerId);
         }
-
-        // Check for allowed players
-        if(IsOperating()) {
-            foreach(Player in Players) {
-                if(!G_Knockout_Players.exists(Player.Id) && !Player.RequestsSpectate) {
-                    KnockoutUser(Player.User, C_Knockout_TxtKickAfterStartMsg);
-                }
-            }
-        }
-
-        if(Prev_PlayerCount == PlayersCount())
-            PlayerCountChanged = False;
     }
 
-    if(PlayerCountChanged) {
-        if(Prev_PlayerCount < C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount) {
-            // If it's enough players now, restart round!
-            MB_StopRound();
-        } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
-            // If it's not enough players now, restart round and display message!
-            MB_StopRound();
-        }
-
-        Prev_PlayerCount = PlayersCount();
-        Net_PlayerCount  = Prev_PlayerCount;
-
-        // Infected player count might be changed too
-        G_InfectedPlayerCount = CountInfected();
-
-        UpdateTablePlayers();
-
-        if(!G_InfectionStarted)
-            CalcAndDisplayInfChance();
+    if(Prev_PlayerCount < C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount) {
+        // If it's enough players now, restart round!
+        MB_StopRound();
+    } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
+        // If it's not enough players now, restart round and display message!
+        MB_StopRound();
     }
+
+    Prev_PlayerCount = PlayersCount();
+    Net_PlayerCount  = Prev_PlayerCount;
+
+    // Infected player count might be changed too
+    G_InfectedPlayerCount = CountInfected();
+
+    if(!G_InfectionStarted)
+        CalcAndDisplayInfChance();
 }
 if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
     PlayerCountChanged = True;
@@ -920,7 +915,8 @@ if(!G_QuickRestart) {
                 G_Knockout_RoundNb = 0;
 
                 KnockoutMessage("Only $080" ^ NewPlayersCount ^ "$z$s player(s) left!");
-                KnockoutMessage("No more players will be knocked out! Get the maximum amount of points to win!");
+                KnockoutMessage("No more players will be knocked out!");
+                KnockoutMessage("Get the maximum amount of points to win!");
             }
         } else {
             // Last stage
@@ -1280,27 +1276,16 @@ Void SetupInfectedWeapons(CSmPlayer _Player) {
     ForceSetWeapon(_Player);
 }
 
-Void UpdateTablePlayers() {
-    declare Text[] Logins = Text[];
-    foreach(Player in Players) {
-        if(Player.Score == Null)
-            continue;
-        Logins.add(Player.Login);
-    }
-    foreach(Player in Spectators) {
-        if(Player.Score == Null)
-            continue;
-        Logins.add(Player.Login);
-    }
-    IScores::FilterLogins(Logins);
-}
-
 Void UpdateScoresStatus(CSmPlayer _Player) {
     if(!Spectators.existskey(_Player.Id)) {
-        if(IsInfected(_Player)) {
-            IScores::SetStatus(_Player, IScores::Id_Status_Infected());
+        if(IsAllowedToPlay(_Player)) {
+            if(IsInfected(_Player)) {
+                IScores::SetStatus(_Player, IScores::Id_Status_Infected());
+            } else {
+                IScores::SetStatus(_Player, IScores::Id_Status_Survivor());
+            }
         } else {
-            IScores::SetStatus(_Player, IScores::Id_Status_Survivor());
+            IScores::SetStatus(_Player, IScores::Id_Status_KO());
         }
     } else {
         IScores::SetStatus(_Player, IScores::Id_Status_Spectator());
@@ -1376,6 +1361,9 @@ Void OnHit(CSmModeEvent _Event, Integer _Multiplier) {
 
 Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
     if(_Victim == Null)
+        return;
+
+    if(!IsAllowedToPlay(_Victim) || !IsAllowedToPlay(_Infector))
         return;
 
     if(IsInfected(_Victim) || (_Infector != Null && !IsInfected(_Infector))) {
@@ -2102,7 +2090,7 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
     }
 }
 
-// Initializes all players, and un-infects them
+// Initializes and un-infects player
 Void InitializePlayer(CSmPlayer _Player) {
     declare netwrite Boolean Net_Infected     for _Player;
     declare netwrite Real Net_NearestSurvivor for _Player;
@@ -2188,8 +2176,7 @@ Void NonoperationalPlayLoop() {
 
     foreach(Player in Players) {
         if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
-            if(IsAllowedToPlay(Player))
-                UnspawnedPlayers.add(Player);
+            UnspawnedPlayers.add(Player);
             continue;
         }
     }
@@ -2300,9 +2287,10 @@ Void KnockoutUser(CUser _User, Text _Reason) {
         Admin_KickUser(_User, _Reason);
     } else {
         declare UI <=> UIManager.GetUI(_User);
-        if(!UI.ForceSpectator) {
+        if(UI == Null) {
+            Admin_KickUser(_User, _Reason);
+        } else if(!UI.ForceSpectator) {
             UI.ForceSpectator = True;
-            Users_RequestSwitchToSpectator(_User);
             KnockoutMessage(_User, _Reason);
         }
     }

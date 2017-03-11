@@ -10,11 +10,13 @@
 #Const  C_Status_Spectator              0
 #Const  C_Status_Survivor               1
 #Const  C_Status_Infected               2
+#Const  C_Status_KO                     3
 
 #Const  C_TxtUnkTime                    "--:--.--"
 #Const  C_TxtSurvivor                   "$f00Survivor"
 #Const  C_TxtInfected                   "$080Infected"
 #Const  C_TxtSpectator                  "$aaaSpectator"
+#Const  C_TxtKnockedOut                 "$ff0K.O"
 #Const  C_TxtUnknown                    "$888Unknown"
 
 #Const  C_TopHits                       "Hits"
@@ -51,7 +53,7 @@
 #Const  C_ST_Col_Legend_Hits            "Hit"
 #Const  C_ST_Col_Legend_Survivals       "Srv"
 
-#Const  C_ST_Col_DefVal_Status          "$f00Survivor"
+#Const  C_ST_Col_DefVal_Status          "$888Unknown"
 #Const  C_ST_Col_DefVal_SurvivalTime    "--:--.--"
 #Const  C_ST_Col_DefVal_Infections      "$0800"
 #Const  C_ST_Col_DefVal_Hits            "$f000"
@@ -80,6 +82,7 @@ declare Integer G_LibST_RoundId;
 Integer Id_Status_Spectator() { return C_Status_Spectator; }
 Integer Id_Status_Survivor()  { return C_Status_Survivor;  }
 Integer Id_Status_Infected()  { return C_Status_Infected;  }
+Integer Id_Status_KO()        { return C_Status_KO;  }
 
 Text GetScriptVersion() {
     return Version;
