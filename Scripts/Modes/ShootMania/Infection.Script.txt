@@ -331,11 +331,7 @@ G_MapSetting_WaterForInfected_Heals       = False;
 
 G_MapSetting_GatesCanBeClosedDuringRound  = False;
 
-if(S_KnockoutMode) {
-    G_Knockout_Players.clear();
-    G_Knockout_Stage = C_Knockout_Stage_Init;
-    G_Knockout_RoundNb = 0;
-}
+KnockoutInit();
 
 foreach(Landmark in MapLandmarks) {
     Debug("Checking landmark `" ^ Landmark.Tag ^ "`");
@@ -442,14 +438,16 @@ MB_UseSectionRound = True;
 ***
 IScores::RoundBegin();
 
-if(G_Knockout_Stage == C_Knockout_Stage_Init) {
-    foreach(Player in Players) {
-        G_Knockout_Players.add(Player.Id);
-    }
-    if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
-        G_Knockout_Stage = C_Knockout_Stage_First;
-    } else {
-        G_Knockout_Stage = C_Knockout_Stage_Last;
+if(S_KnockoutMode) {
+    if(G_Knockout_Stage == C_Knockout_Stage_Init) {
+        foreach(Player in Players) {
+            G_Knockout_Players.add(Player.Id);
+        }
+        if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
+            G_Knockout_Stage = C_Knockout_Stage_First;
+        } else {
+            G_Knockout_Stage = C_Knockout_Stage_Last;
+        }
     }
 }
 
@@ -739,9 +737,12 @@ if(Prev_PlayerCount != Players.count) {
 
     if(Prev_PlayerCount < C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount) {
         // If it's enough players now, restart round!
+        G_QuickRestart = True;
+        KnockoutInit();
         MB_StopRound();
     } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
         // If it's not enough players now, restart round and display message!
+        G_QuickRestart = True;
         MB_StopRound();
     }
 
@@ -2185,6 +2186,60 @@ Void NonoperationalPlayLoop() {
         SpawnAndInitPlayers(UnspawnedPlayers);
 }
 
+Void KnockoutMessage(Text _Message) {
+    UIManager.UIAll.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutMessage(CUser _User, Text _Message) {
+    declare UI <=> UIManager.GetUI(_User);
+    if(UI != Null)
+        UI.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutUser(CUser _User, Text _Reason) {
+    if(S_KnockoutMode_Kick) {
+        Admin_KickUser(_User, _Reason);
+    } else {
+        declare UI <=> UIManager.GetUI(_User);
+        if(UI == Null) {
+            Admin_KickUser(_User, _Reason);
+        } else if(!UI.ForceSpectator) {
+            UI.ForceSpectator = True;
+            KnockoutMessage(_User, _Reason);
+        }
+    }
+}
+
+Void KnockoutInit() {
+    G_Knockout_Players.clear();
+    if(S_KnockoutMode) {
+        G_Knockout_Stage = C_Knockout_Stage_Init;
+    } else {
+        G_Knockout_Stage = C_Knockout_Stage_None;
+    }
+    G_Knockout_RoundNb = 0;
+}
+
+Void KnockoutEnable() {
+    KnockoutMessage("Knockout mode has been enabled!");
+    KnockoutInit();
+    if(IsOperating()) {
+        G_QuickRestart = True;
+        MB_StopSubmatch();
+        MB_SectionSubmatchNb -= 1;
+    }
+}
+
+Void KnockoutDisable() {
+    KnockoutMessage("Knockout mode has been disabled.");
+    KnockoutInit();
+    if(IsOperating()) {
+        G_QuickRestart = True;
+        MB_StopSubmatch();
+        MB_SectionSubmatchNb -= 1;
+    }
+}
+
 Void Pause() {
     if(G_IsPaused)
         return;
@@ -2231,6 +2286,7 @@ Void Unpause() {
         MB_StopRound();
         MB_SectionRoundNb -= 1;
     } else {
+        KnockoutInit();
         MB_StopSubmatch();
         MB_SectionSubmatchNb -= 1;
     }
@@ -2269,54 +2325,6 @@ Void InfectionXmlRpcLoop() {
                 }
             }
         }
-    }
-}
-
-Void KnockoutMessage(Text _Message) {
-    UIManager.UIAll.SendChat(C_Knockout_TxtPrefix ^ _Message);
-}
-
-Void KnockoutMessage(CUser _User, Text _Message) {
-    declare UI <=> UIManager.GetUI(_User);
-    if(UI != Null)
-        UI.SendChat(C_Knockout_TxtPrefix ^ _Message);
-}
-
-Void KnockoutUser(CUser _User, Text _Reason) {
-    if(S_KnockoutMode_Kick) {
-        Admin_KickUser(_User, _Reason);
-    } else {
-        declare UI <=> UIManager.GetUI(_User);
-        if(UI == Null) {
-            Admin_KickUser(_User, _Reason);
-        } else if(!UI.ForceSpectator) {
-            UI.ForceSpectator = True;
-            KnockoutMessage(_User, _Reason);
-        }
-    }
-}
-
-Void KnockoutEnable() {
-    KnockoutMessage("Knockout mode has been enabled!");
-    G_Knockout_Players.clear();
-    G_Knockout_Stage = C_Knockout_Stage_Init;
-    G_Knockout_RoundNb = 0;
-    if(IsOperating()) {
-        G_QuickRestart = True;
-        MB_StopSubmatch();
-        MB_SectionSubmatchNb -= 1;
-    }
-}
-
-Void KnockoutDisable() {
-    KnockoutMessage("Knockout mode has been disabled.");
-    G_Knockout_Players.clear();
-    G_Knockout_Stage = C_Knockout_Stage_None;
-    G_Knockout_RoundNb = 0;
-    if(IsOperating()) {
-        G_QuickRestart = True;
-        MB_StopSubmatch();
-        MB_SectionSubmatchNb -= 1;
     }
 }
 
