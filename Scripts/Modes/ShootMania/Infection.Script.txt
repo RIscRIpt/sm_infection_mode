@@ -246,6 +246,7 @@ declare Boolean G_MapSetting_GatesCanBeClosedDuringRound;
 declare Ident[] G_Knockout_Players;
 declare Integer G_Knockout_Stage;
 declare Integer G_Knockout_RoundNb;
+declare Boolean G_Knockout_FirstRound;
 
 ***LogVersion***
 ***
@@ -451,6 +452,9 @@ if(S_KnockoutMode) {
                 G_Knockout_Stage = C_Knockout_Stage_Last;
             }
         }
+        G_Knockout_FirstRound = True;
+    } else {
+        G_Knockout_FirstRound = False;
     }
 }
 
@@ -914,6 +918,8 @@ if(!G_QuickRestart) {
         }
 
         UpdateScoresTableFooter();
+
+        G_Knockout_FirstRound = False;
     }
 
     MB_Sleep(C_RoundPauseTime);
@@ -1022,8 +1028,7 @@ Boolean IsOperating() {
 }
 
 Boolean IsKnockoutStarted() {
-    return G_Knockout_Stage == C_Knockout_Stage_First && G_Knockout_RoundNb > 0
-        || G_Knockout_Stage == C_Knockout_Stage_Last;
+    return !G_Knockout_FirstRound && G_Knockout_Stage > C_Knockout_Stage_Init;
 }
 
 Integer PlayersCount() {
