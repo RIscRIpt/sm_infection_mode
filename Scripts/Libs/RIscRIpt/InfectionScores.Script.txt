@@ -130,6 +130,7 @@ switch(Net_LibIS_Status) {
     case {{{C_Status_Survivor}}}  : Label_Col.Value = "{{{C_TxtSurvivor}}}";
     case {{{C_Status_Infected}}}  : Label_Col.Value = "{{{C_TxtInfected}}}";
     case {{{C_Status_Spectator}}} : Label_Col.Value = "{{{C_TxtSpectator}}}";
+    case {{{C_Status_KO}}}        : Label_Col.Value = "{{{C_TxtKnockedOut}}}";
     default: Label_Col.Value = "{{{C_TxtUnknown}}}";
 }
 """);
