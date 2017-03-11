@@ -542,6 +542,11 @@ if(IsAllowedToPlay(Player)) {
             Infect(Player);
         }
     }
+    if(S_KnockoutMode) {
+        // Add player to k.o. players because he's allowed to play
+        if(!G_Knockout_Players.exists(Player.Id))
+            G_Knockout_Players.add(Player.Id);
+    }
 } else {
     KnockoutUser(Player.User, C_Knockout_TxtKickAfterStartMsg);
 }
@@ -700,7 +705,7 @@ declare Boolean PlayerCountChanged = False;
 if(Prev_PlayerCount != Players.count) {
     PlayerCountChanged = True;
 
-    if(G_Knockout_Stage > C_Knockout_Stage_Init) {
+    if(S_KnockoutMode) {
         // Cleanup allowed players
         foreach(PlayerId in G_Knockout_Players) {
             if(!Players.existskey(PlayerId))
@@ -716,6 +721,7 @@ if(Prev_PlayerCount != Players.count) {
     } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
         // If it's not enough players now, restart round and display message!
         G_QuickRestart = True;
+        KnockoutInit();
         MB_StopRound();
     }
 
@@ -1003,21 +1009,34 @@ Void Debug(Text _Message) {
 
 // IsOperating returns whether the Script can operate in a normal mode
 Boolean IsOperating() {
-    return !G_IsPaused && Players.count >= C_MinimalPlayerCount;
+    if(G_IsPaused)
+        return False;
+    if(!S_KnockoutMode) {
+        if(Players.count < C_MinimalPlayerCount)
+            return False;
+    } else {
+        if(G_Knockout_Players.count < C_MinimalPlayerCount)
+            return False;
+    }
+    return True;
+}
+
+Boolean IsKnockoutStarted() {
+    return G_Knockout_Stage == C_Knockout_Stage_First && G_Knockout_RoundNb > 0
+        || G_Knockout_Stage == C_Knockout_Stage_Last;
 }
 
 Integer PlayersCount() {
-    if(S_KnockoutMode && IsOperating() && G_Knockout_Stage > C_Knockout_Stage_Init) {
-        return G_Knockout_Players.count;
+    if(S_KnockoutMode && IsOperating()) {
+        if(IsKnockoutStarted())
+            return G_Knockout_Players.count;
     }
     return Players.count;
 }
 
 Boolean IsAllowedToPlay(CSmPlayer _Player) {
     if(S_KnockoutMode && IsOperating()) {
-        if(G_Knockout_Stage == C_Knockout_Stage_First && G_Knockout_RoundNb > 0
-        || G_Knockout_Stage == C_Knockout_Stage_Last)
-        {
+        if(IsKnockoutStarted()) {
             return G_Knockout_Players.exists(_Player.Id);
         }
     }
