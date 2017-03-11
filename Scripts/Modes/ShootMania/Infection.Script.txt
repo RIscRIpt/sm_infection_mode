@@ -467,15 +467,19 @@ if(!S_KnockoutMode) {
         TxtFooter ^= "Score limit: " ^ S_ScoreLimit;
     }
 } else {
+    declare Integer RoundsLeft;
     if(G_Knockout_Stage != C_Knockout_Stage_Last) {
-        TxtFooter ^= "Knockout stage";
-        TxtFooter ^= "   |   ";
-        TxtFooter ^= "Required players: " ^ S_KnockoutMode_LastStage_Players;
+        TxtFooter ^= "Knockout stage till " ^ S_KnockoutMode_LastStage_Players ^ " player(s) left";
+        RoundsLeft = S_KnockoutMode_FirstStage_Rounds;
     } else {
-        declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
         TxtFooter ^= "Max points stage";
-        TxtFooter ^= "   |   ";
+    }
+    TxtFooter ^= "   |   ";
+    RoundsLeft -= G_Knockout_RoundNb;
+    if(RoundsLeft > 0) {
         TxtFooter ^= RoundsLeft ^ " round(s) left";
+    } else {
+        TxtFooter ^= "Last round";
     }
 }
 IScores::SetTableFooter(TxtFooter);
@@ -576,11 +580,11 @@ declare UI <=> UIManager.GetUI(Spectator);
 
 if(UI != Null) {
     Tabs::UseTabs(UI, "ScoresTab");
-    UI.SpectatorForcedClan      = 0;
-    UI.SpectatorForceCameraType = 15;
+    UI.SpectatorForcedClan       = 0;
+    UI.SpectatorForceCameraType  = 15;
+    UI.OverlayHideSpectatorInfos = True;
 }
 
-UIManager.UIAll.OverlayHideSpectatorInfos = True;
 ***
 
 ***Yield***
@@ -876,10 +880,11 @@ if(!G_QuickRestart) {
         // Knockout mode limits
 
         declare Integer ToKnockout = GetNbOfPlayersToKO();
-        declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
 
         if(G_InfectedPlayerCount > 0)
             G_Knockout_RoundNb += 1;
+
+        declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
 
         if(G_Knockout_Stage != C_Knockout_Stage_Last) {
             // First stage
@@ -915,7 +920,7 @@ if(!G_QuickRestart) {
                 G_Knockout_RoundNb = 0;
 
                 KnockoutMessage("Only $080" ^ NewPlayersCount ^ "$z$s player(s) left!");
-                KnockoutMessage("No more players will be knocked out! Try to get the maximum amount of points to win!");
+                KnockoutMessage("No more players will be knocked out! Get the maximum amount of points to win!");
             }
         } else {
             // Last stage
@@ -1033,8 +1038,12 @@ Integer PlayersCount() {
 }
 
 Boolean IsAllowedToPlay(CSmPlayer _Player) {
-    if(S_KnockoutMode && IsOperating() && G_Knockout_Stage > C_Knockout_Stage_Init) {
-        return G_Knockout_Players.exists(_Player.Id);
+    if(S_KnockoutMode && IsOperating()) {
+        if(G_Knockout_Stage == C_Knockout_Stage_First && G_Knockout_RoundNb > 0
+        || G_Knockout_Stage == C_Knockout_Stage_Last)
+        {
+            return G_Knockout_Players.exists(_Player.Id);
+        }
     }
     return True;
 }
@@ -1643,6 +1652,10 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
+	if(UI.ForceSpectator) {
+		return;
+	}
+
     if(UI.UISequence != CUIConfig::EUISequence::Playing
     && UI.UISequence != CUIConfig::EUISequence::None) {
         return;
@@ -1653,6 +1666,7 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
+    UI.ForceSpectator = True;
     Users_RequestSwitchToSpectator(_Player.User);
     UIManager.UIAll.SendChat(_Player.Name ^ C_WasIdleTooLongMovingToSpec);
     UIManager.UIAll.SendNotice(
@@ -2019,6 +2033,8 @@ Void SpawnAndInitPlayer(CSmMapPlayerSpawn _Spawn, CSmPlayer _Player) {
         _Player.ArmorReplenishGain = 0;
     }
 
+    declare UI <=> UIManager.GetUI(_Player);
+    UI.ForceSpectator = False;
     SM::SpawnPlayer(_Player, ClanNum, _Player.Armor, _Spawn, SpawnTime);
 
     // Weapons setup
@@ -2283,8 +2299,12 @@ Void KnockoutUser(CUser _User, Text _Reason) {
     if(S_KnockoutMode_Kick) {
         Admin_KickUser(_User, _Reason);
     } else {
-        Users_RequestSwitchToSpectator(_User);
-        KnockoutMessage(_User, _Reason);
+        declare UI <=> UIManager.GetUI(_User);
+        if(!UI.ForceSpectator) {
+            UI.ForceSpectator = True;
+            Users_RequestSwitchToSpectator(_User);
+            KnockoutMessage(_User, _Reason);
+        }
     }
 }
 
