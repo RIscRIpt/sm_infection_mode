@@ -311,7 +311,6 @@ Teams[C_InfectedTeamId].ColorPrimary = C_InfectedColor;
 
 UIManager.UIAll.MarkersXML = "";
 
-G_InfectedPlayerCount = 0;
 G_InfectedSpawns.clear();
 G_SurvivorSpawns.clear();
 G_AllSpawns.clear();
@@ -331,8 +330,6 @@ G_MapSetting_WaterForInfected_Protects    = False;
 G_MapSetting_WaterForInfected_Heals       = False;
 
 G_MapSetting_GatesCanBeClosedDuringRound  = False;
-
-KnockoutInit();
 
 foreach(Landmark in MapLandmarks) {
     Debug("Checking landmark `" ^ Landmark.Tag ^ "`");
@@ -417,6 +414,8 @@ SpawnScreen::CreatePrettyRules(ModeName);
 ***InitSubmatch***
 ***
 IScores::MatchBegin();
+
+InitGame();
 ***
 
 ***InitRound***
@@ -550,6 +549,15 @@ if(IsAllowedToPlay(Player)) {
         // Add player to k.o. players because he's allowed to play
         if(!G_Knockout_Players.exists(Player.Id))
             G_Knockout_Players.add(Player.Id);
+
+        if(G_Knockout_FirstRound) {
+            if(G_Knockout_Stage == C_Knockout_Stage_Last) {
+                if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
+                    G_Knockout_Stage = C_Knockout_Stage_First;
+                    UpdateScoresTableFooter();
+                }
+            }
+        }
     }
 } else {
     KnockoutUser(Player.User, C_Knockout_TxtKickAfterStartMsg);
@@ -719,14 +727,10 @@ if(Prev_PlayerCount != Players.count) {
 
     if(Prev_PlayerCount < C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount) {
         // If it's enough players now, restart round!
-        G_QuickRestart = True;
-        KnockoutInit();
-        MB_StopRound();
+        RestartGame();
     } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
         // If it's not enough players now, restart round and display message!
-        G_QuickRestart = True;
-        KnockoutInit();
-        MB_StopRound();
+        RestartGame();
     }
 
     Prev_PlayerCount = PlayersCount();
@@ -1011,6 +1015,38 @@ Void Debug(Text _Message) {
         UIManager.UIAll.SendChat("$fff[Infection] " ^ _Message);
         log("[Infection] " ^ _Message);
     }
+}
+
+Void KnockoutInit() {
+    G_Knockout_Players.clear();
+    if(S_KnockoutMode) {
+        G_Knockout_Stage = C_Knockout_Stage_Init;
+    } else {
+        G_Knockout_Stage = C_Knockout_Stage_None;
+    }
+    G_Knockout_RoundNb = 0;
+}
+
+Void InitGame() {
+    G_InfectedPlayerCount = 0;
+
+    G_ProtectionQueue.clear();
+
+    KnockoutInit();
+}
+
+Void RestartGame() {
+    InitGame();
+
+    G_QuickRestart = True;
+    MB_StopSubmatch();
+    MB_SectionSubmatchNb -= 1;
+}
+
+Void RestartRound() {
+    G_QuickRestart = True;
+    MB_StopRound();
+    MB_SectionRoundNb -= 1;
 }
 
 // IsOperating returns whether the Script can operate in a normal mode
@@ -1677,9 +1713,9 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
-	if(UI.ForceSpectator) {
-		return;
-	}
+    if(UI.ForceSpectator) {
+        return;
+    }
 
     if(UI.UISequence != CUIConfig::EUISequence::Playing
     && UI.UISequence != CUIConfig::EUISequence::None) {
@@ -2246,23 +2282,11 @@ Void KnockoutUser(CUser _User, Text _Reason) {
     }
 }
 
-Void KnockoutInit() {
-    G_Knockout_Players.clear();
-    if(S_KnockoutMode) {
-        G_Knockout_Stage = C_Knockout_Stage_Init;
-    } else {
-        G_Knockout_Stage = C_Knockout_Stage_None;
-    }
-    G_Knockout_RoundNb = 0;
-}
-
 Void KnockoutEnable() {
     KnockoutMessage("Knockout mode has been enabled!");
     KnockoutInit();
     if(IsOperating()) {
-        G_QuickRestart = True;
-        MB_StopSubmatch();
-        MB_SectionSubmatchNb -= 1;
+        RestartGame();
     }
 }
 
@@ -2270,9 +2294,7 @@ Void KnockoutDisable() {
     KnockoutMessage("Knockout mode has been disabled.");
     KnockoutInit();
     if(IsOperating()) {
-        G_QuickRestart = True;
-        MB_StopSubmatch();
-        MB_SectionSubmatchNb -= 1;
+        RestartGame();
     }
 }
 
@@ -2317,14 +2339,10 @@ Void Unpause() {
     Message::SetDefaultBigMessage("");
     Message::SetDefaultStatusMessage("");
 
-    G_QuickRestart = True;
     if(S_PauseKeepResultsOnUnpause) {
-        MB_StopRound();
-        MB_SectionRoundNb -= 1;
+        RestartRound();
     } else {
-        KnockoutInit();
-        MB_StopSubmatch();
-        MB_SectionSubmatchNb -= 1;
+        RestartGame();
     }
 }
 
