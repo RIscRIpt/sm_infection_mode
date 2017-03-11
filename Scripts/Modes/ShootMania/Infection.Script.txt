@@ -1363,13 +1363,13 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
     if(_Victim == Null)
         return;
 
-    if(!IsAllowedToPlay(_Victim) || !IsAllowedToPlay(_Infector))
-        return;
-
     if(IsInfected(_Victim) || (_Infector != Null && !IsInfected(_Infector))) {
         log("ERROR: Infect is called with already infected victim, or not infected infector!");
         return;
     }
+
+    if(!IsAllowedToPlay(_Victim) || (_Infector != Null && !IsAllowedToPlay(_Infector)))
+        return;
 
     declare netwrite Boolean Net_Infected     for _Victim;
     declare netwrite Real Net_NearestSurvivor for _Victim;
