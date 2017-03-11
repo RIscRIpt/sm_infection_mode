@@ -733,6 +733,14 @@ if(Prev_PlayerCount != Players.count) {
         RestartGame();
     }
 
+    // This should be handled by a correct work of above code block and PlayersCount()
+    //// Handle rare edge case:
+    //// All knockout players left the game, after first k.o. round
+    //if(S_KnockoutMode && IsKnockoutStarted()) {
+    //    if(Prev_PlayerCount >= C_MinimalPlayerCount && G_Knockout_Players.count < C_MinimalPlayerCount)
+    //        RestartGame();
+    //}
+
     Prev_PlayerCount = PlayersCount();
     Net_PlayerCount  = Prev_PlayerCount;
 
@@ -1048,37 +1056,34 @@ Void RestartRound() {
     MB_SectionRoundNb -= 1;
 }
 
+Boolean IsKnockoutStarted() {
+    return S_KnockoutMode && !G_Knockout_FirstRound && G_Knockout_Stage > C_Knockout_Stage_Init;
+}
+
 // IsOperating returns whether the Script can operate in a normal mode
 Boolean IsOperating() {
     if(G_IsPaused)
         return False;
-    if(!S_KnockoutMode) {
-        if(Players.count < C_MinimalPlayerCount)
+    if(IsKnockoutStarted()) {
+        if(G_Knockout_Players.count < C_MinimalPlayerCount)
             return False;
     } else {
-        if(G_Knockout_Players.count < C_MinimalPlayerCount)
+        if(Players.count < C_MinimalPlayerCount)
             return False;
     }
     return True;
 }
 
-Boolean IsKnockoutStarted() {
-    return !G_Knockout_FirstRound && G_Knockout_Stage > C_Knockout_Stage_Init;
-}
-
 Integer PlayersCount() {
-    if(S_KnockoutMode && IsOperating()) {
-        if(IsKnockoutStarted())
-            return G_Knockout_Players.count;
+    if(IsKnockoutStarted()) {
+        return G_Knockout_Players.count;
     }
     return Players.count;
 }
 
 Boolean IsAllowedToPlay(CSmPlayer _Player) {
-    if(S_KnockoutMode && IsOperating()) {
-        if(IsKnockoutStarted()) {
-            return G_Knockout_Players.exists(_Player.Id);
-        }
+    if(IsOperating() && IsKnockoutStarted()) {
+        return G_Knockout_Players.exists(_Player.Id);
     }
     return True;
 }
