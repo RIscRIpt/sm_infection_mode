@@ -494,10 +494,10 @@ Message::CleanAllMessages();
 G_FirstInfectedId     = NullId;
 G_InfectedPlayerCount = 0;
 
-// Should not be required because of InitializePlayer in OnNewPlayer
-//foreach(Player in AllPlayers) {
-//    InitializePlayer(Player);
-//}
+// Required to uninfect all players
+foreach(Player in AllPlayers) {
+    InitializePlayer(Player);
+}
 
 StartTime = Now;
 if(IsOperating()) {
