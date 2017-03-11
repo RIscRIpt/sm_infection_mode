@@ -859,13 +859,12 @@ if(!G_QuickRestart) {
             }
         }
 
-    } else {
+    } else if(G_InfectedPlayerCount > 0) { // only process k.o. round if infected players didn't leave
         // Knockout mode limits
 
         declare Integer ToKnockout = GetNbOfPlayersToKO();
 
-        if(G_InfectedPlayerCount > 0)
-            G_Knockout_RoundNb += 1;
+        G_Knockout_RoundNb += 1;
 
         declare Integer RoundsLeft = S_KnockoutMode_LastStage_Rounds - G_Knockout_RoundNb;
 
