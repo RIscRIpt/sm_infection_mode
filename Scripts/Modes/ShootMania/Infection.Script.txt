@@ -451,37 +451,7 @@ if(S_KnockoutMode) {
     }
 }
 
-// Setup scores table footer
-declare Text TxtFooter = "";
-if(!S_KnockoutMode) {
-    if(S_RoundLimit > 0) {
-        if(TxtFooter != "")
-            TxtFooter ^= "   |   ";
-        TxtFooter ^= _("Round") ^ " " ^ MB_SectionRoundNb ^ "/" ^ S_RoundLimit;
-    }
-    if(S_ScoreLimit > 0) {
-        if(TxtFooter != "")
-            TxtFooter ^= "   |   ";
-        TxtFooter ^= "Score limit: " ^ S_ScoreLimit;
-    }
-} else {
-    declare Integer RoundsLeft;
-    if(G_Knockout_Stage != C_Knockout_Stage_Last) {
-        TxtFooter ^= "Knockout stage till " ^ S_KnockoutMode_LastStage_Players ^ " player(s) left";
-        RoundsLeft = S_KnockoutMode_FirstStage_Rounds;
-    } else {
-        TxtFooter ^= "Max points stage";
-        RoundsLeft = S_KnockoutMode_LastStage_Rounds;
-    }
-    TxtFooter ^= "   |   ";
-    RoundsLeft -= G_Knockout_RoundNb;
-    if(RoundsLeft > 0) {
-        TxtFooter ^= RoundsLeft ^ " round(s) left";
-    } else {
-        TxtFooter ^= "Last round";
-    }
-}
-IScores::SetTableFooter(TxtFooter);
+UpdateScoresTableFooter();
 
 UIManager.UIAll.UISequence      = CUIConfig::EUISequence::Playing;
 UIManager.UIAll.BigMessageSound = CUIConfig::EUISound::Default;
@@ -926,9 +896,15 @@ if(!G_QuickRestart) {
                 // End of knockout match
                 MB_StopMap();
             } else {
-                KnockoutMessage(RoundsLeft ^ " round(s) left!");
+                if(RoundsLeft > 1) {
+                    KnockoutMessage(RoundsLeft ^ " round(s) left!");
+                } else {
+                    KnockoutMessage("Last round!");
+                }
             }
         }
+
+        UpdateScoresTableFooter();
     }
 
     MB_Sleep(C_RoundPauseTime);
@@ -1306,6 +1282,39 @@ Void UpdateScoresSurvivalTime(CSmPlayer _Player) {
 Void UpdateScores(CSmPlayer _Player) {
     UpdateScoresStatus(_Player);
     UpdateScoresSurvivalTime(_Player);
+}
+
+Void UpdateScoresTableFooter() {
+    declare Text TxtFooter = "";
+    if(!S_KnockoutMode) {
+        if(S_RoundLimit > 0) {
+            if(TxtFooter != "")
+                TxtFooter ^= "   |   ";
+            TxtFooter ^= _("Round") ^ " " ^ MB_SectionRoundNb ^ "/" ^ S_RoundLimit;
+        }
+        if(S_ScoreLimit > 0) {
+            if(TxtFooter != "")
+                TxtFooter ^= "   |   ";
+            TxtFooter ^= "Score limit: " ^ S_ScoreLimit;
+        }
+    } else {
+        declare Integer RoundsLeft;
+        if(G_Knockout_Stage != C_Knockout_Stage_Last) {
+            TxtFooter ^= "Knockout stage till " ^ S_KnockoutMode_LastStage_Players ^ " player(s) left";
+            RoundsLeft = S_KnockoutMode_FirstStage_Rounds;
+        } else {
+            TxtFooter ^= "Max points stage";
+            RoundsLeft = S_KnockoutMode_LastStage_Rounds;
+        }
+        TxtFooter ^= "   |   ";
+        RoundsLeft -= G_Knockout_RoundNb;
+        if(RoundsLeft > 1) {
+            TxtFooter ^= RoundsLeft ^ " round(s) left";
+        } else {
+            TxtFooter ^= "Last round";
+        }
+    }
+    IScores::SetTableFooter(TxtFooter);
 }
 
 Void UpdateModeStatusMessage() {
