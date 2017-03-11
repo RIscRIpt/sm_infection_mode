@@ -961,9 +961,6 @@ foreach(Player in Players) {
     }
 }
 
-Layers::Detach(C_MainManialinkLayer);
-Layers::Destroy(C_MainManialinkLayer);
-
 if(MaxScore == 0) {
     UIManager.UIAll.BigMessage = _("|Match|Draw");
 } else if(MaxScores.count > 0) {
@@ -1010,6 +1007,9 @@ SpawnScreen::DestroyRules();
 SpawnScreen::DestroyMapInfo();
 UIManager.ResetAll();
 UIManager.UILayerDestroyAll();
+
+Layers::Detach(C_MainManialinkLayer);
+Layers::Destroy(C_MainManialinkLayer);
 
 IScores::Unload();
 ***
