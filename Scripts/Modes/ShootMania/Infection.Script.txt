@@ -704,9 +704,6 @@ if(S_KnockoutMode && G_Knockout_Stage == C_Knockout_Stage_None) {
 // Should be in `***Yield***`, but it depends on InfectByLogin
 InfectionXmlRpcLoop();
 
-declare netwrite Integer Net_PlayerCount   for Teams[0];
-declare netwrite Integer Net_InfectedCount for Teams[0];
-
 declare Integer Prev_PlayerCount         for This = -1;
 declare Integer Prev_InfectedPlayerCount for This = -1;
 
@@ -714,7 +711,9 @@ declare Boolean PlayerCountChanged = False;
 
 // The most reliable way of checking of player count changes.
 // It's done in one place, so updated only once per playloop iteration.
-if(Prev_PlayerCount != Players.count) {
+if(Prev_PlayerCount != Players.count
+|| IsKnockoutStarted() && Prev_PlayerCount != G_Knockout_Players.count
+) {
     PlayerCountChanged = True;
 
     if(S_KnockoutMode) {
@@ -725,22 +724,16 @@ if(Prev_PlayerCount != Players.count) {
         }
     }
 
-    if(Prev_PlayerCount < C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount) {
-        // If it's enough players now, restart round!
-        RestartGame();
-    } else if(Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() < C_MinimalPlayerCount) {
-        // If it's not enough players now, restart round and display message!
-        RestartGame();
+    // If it's enough players now, restart!
+    // Or if it's not enough players now, restart and display message!
+    if(Prev_PlayerCount <  C_MinimalPlayerCount && PlayersCount() >= C_MinimalPlayerCount
+    || Prev_PlayerCount >= C_MinimalPlayerCount && PlayersCount() <  C_MinimalPlayerCount
+    ) {
+        if(!G_IsPaused)
+            RestartGame();
     }
 
-    // This should be handled by a correct work of above code block and PlayersCount()
-    //// Handle rare edge case:
-    //// All knockout players left the game, after first k.o. round
-    //if(S_KnockoutMode && IsKnockoutStarted()) {
-    //    if(Prev_PlayerCount >= C_MinimalPlayerCount && G_Knockout_Players.count < C_MinimalPlayerCount)
-    //        RestartGame();
-    //}
-
+    declare netwrite Integer Net_PlayerCount for Teams[0];
     Prev_PlayerCount = PlayersCount();
     Net_PlayerCount  = Prev_PlayerCount;
 
@@ -790,6 +783,7 @@ if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
         }
     }
 
+    declare netwrite Integer Net_InfectedCount for Teams[0];
     Prev_InfectedPlayerCount = G_InfectedPlayerCount;
     Net_InfectedCount        = G_InfectedPlayerCount;
 }
