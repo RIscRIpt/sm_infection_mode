@@ -1184,10 +1184,15 @@ Void CalcAndDisplayInfChance() {
             ProbFirstInf = 1.0 / PlayersCount();
         }
 
+        declare DisplayDuration = EndTime - Now;
+        if(DisplayDuration <= 0) {
+            DisplayDuration = S_PreparationTime;
+        }
+
         Message::SendStatusMessage(
             Player,
             TL::Compose("Your chance of being infected: $080%1%%", TL::ToText(ML::NearestInteger(ProbFirstInf * 100.0))),
-            EndTime - Now,
+            DisplayDuration,
             1
         );
     }
