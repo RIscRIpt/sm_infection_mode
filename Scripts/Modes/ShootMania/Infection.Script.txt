@@ -744,7 +744,7 @@ if(Prev_PlayerCount != Players.count
     // Infected player count might be changed too
     G_InfectedPlayerCount = CountInfected();
 
-    if(!G_InfectionStarted)
+    if(!G_InfectionStarted && IsOperating())
         CalcAndDisplayInfChance();
 }
 if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
