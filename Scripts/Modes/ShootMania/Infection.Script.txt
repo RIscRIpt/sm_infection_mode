@@ -462,8 +462,11 @@ UpdateScoresTableFooter();
 UIManager.UIAll.UISequence      = CUIConfig::EUISequence::Playing;
 UIManager.UIAll.BigMessageSound = CUIConfig::EUISound::Default;
 
-Message::SetDefaultAllMessages("");
-Message::CleanAllMessages();
+// Don't erase pause message
+if(!G_IsPaused) {
+    Message::SetDefaultAllMessages("");
+    Message::CleanAllMessages();
+}
 
 G_FirstInfectedId     = NullId;
 G_InfectedPlayerCount = 0;
@@ -540,17 +543,18 @@ if(IsAllowedToPlay(Player)) {
     if(IScores::SyncPlayerInfo(Player)) {
         InitializePlayer(Player);
     }
-    if(G_InfectionStarted && S_InfectNewPlayers) {
+    if(IsOperating() && G_InfectionStarted && S_InfectNewPlayers) {
         if(!IsInfected(Player)) {
             Infect(Player);
         }
     }
     if(S_KnockoutMode) {
-        // Add player to k.o. players because he's allowed to play
-        if(!G_Knockout_Players.exists(Player.Id))
-            G_Knockout_Players.add(Player.Id);
-
         if(G_Knockout_FirstRound) {
+            // Add player to k.o. players because he's allowed to play
+            // and only if first round, because all players are allowed to play during the pause
+            if(!G_Knockout_Players.exists(Player.Id))
+                G_Knockout_Players.add(Player.Id);
+
             if(G_Knockout_Stage == C_Knockout_Stage_Last) {
                 if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
                     G_Knockout_Stage = C_Knockout_Stage_First;
@@ -1467,10 +1471,6 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
             RewardInfector(_Infector, S_InfectionScore * S_RewardInfectors);
         }
 
-        // Notify everyone about infection
-        //Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), 4000, 1);
-        //Message::SendBigMessage(_Victim, "$360Infected!", 4000, 1);
-
         InfectorLogin = _Infector.Login;
     }
 
@@ -1692,8 +1692,6 @@ Void ManageMapLeaver(CSmPlayer _Player) {
         }
     } else if(LeftMapSince != -1) {
         LeftMapSince = -1;
-        PlayerUI.BigMessage    = "";
-        PlayerUI.StatusMessage = "";
     }
 }
 
@@ -2183,12 +2181,14 @@ Void InitializePlayer(CSmPlayer _Player) {
 
     LeftMapSince = -1;
 
-    if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
-        if(S_RespawnOnInfection) {
-            UnspawnPlayer(_Player);
-        } else {
-            InitSurvivor(_Player);
-            SetupSurvivorWeapons(_Player);
+    if(IsInfected(_Player)) {
+        if(_Player.SpawnStatus != CSmPlayer::ESpawnStatus::NotSpawned) {
+            if(S_RespawnOnInfection) {
+                UnspawnPlayer(_Player);
+            } else {
+                InitSurvivor(_Player);
+                SetupSurvivorWeapons(_Player);
+            }
         }
     }
 }
