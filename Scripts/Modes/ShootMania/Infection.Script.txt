@@ -802,8 +802,8 @@ if(PlayerCountChanged) {
 }
 
 if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount >= PlayersCount())) {
-    // Don't end the round if not enough players
-    if(PlayersCount() >= C_MinimalPlayerCount) {
+    // End round only if operating
+    if(IsOperating()) {
         MB_StopRound();
     }
 }
