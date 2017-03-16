@@ -1029,6 +1029,27 @@ Void Debug(Text _Message) {
     }
 }
 
+Void KnockoutSetStage(Integer _Stage) {
+    if(G_Knockout_Stage == _Stage)
+        return;
+
+    switch(_Stage) {
+        case C_Knockout_Stage_Last:
+        {
+            if(S_KnockoutMode_LastStage_NewScores) {
+                if(G_Knockout_Stage == C_Knockout_Stage_First) {
+                    // Reset scores only if previous stage was `first`
+                    IScores::MatchEnd();
+                    IScores::MatchBegin();
+                }
+            }
+        }
+    }
+
+    G_Knockout_Stage = _Stage;
+    G_Knockout_RoundNb = 0;
+}
+
 Void KnockoutInit() {
     G_Knockout_Players.clear();
     if(S_KnockoutMode) {
@@ -2265,27 +2286,6 @@ Void NonoperationalPlayLoop() {
 
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
-}
-
-Void KnockoutSetStage(Integer _Stage) {
-    if(G_Knockout_Stage == _Stage)
-        return;
-
-    switch(_Stage) {
-        case C_Knockout_Stage_Last:
-        {
-            if(S_KnockoutMode_LastStage_NewScores) {
-                if(G_Knockout_Stage == C_Knockout_Stage_First) {
-                    // Reset scores only if previous stage was `first`
-                    IScores::MatchEnd();
-                    IScores::MatchBegin();
-                }
-            }
-        }
-    }
-
-    G_Knockout_Stage = _Stage;
-    G_Knockout_RoundNb = 0;
 }
 
 Void KnockoutMessage(Text _Message) {
