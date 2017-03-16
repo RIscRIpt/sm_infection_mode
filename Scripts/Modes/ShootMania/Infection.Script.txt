@@ -90,6 +90,7 @@
 #Setting S_KnockoutMode_FirstStage_Rounds   8           as "number of rounds for first stage knockout"
 #Setting S_KnockoutMode_LastStage_Rounds    5           as "number of rounds for last stage knockout"
 #Setting S_KnockoutMode_LastStage_Players   8           as "number of required players for last stage"
+#Setting S_KnockoutMode_LastStage_NewScores True        as "reset scores for last knockout stage"
 #Setting S_KnockoutMode_Kick                False       as "knockout method (kick=True, spec=False)"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
@@ -416,6 +417,8 @@ SpawnScreen::CreatePrettyRules(ModeName);
 IScores::MatchBegin();
 
 InitGame();
+
+MB_UseSectionSubmatch = True;
 ***
 
 ***InitRound***
@@ -446,9 +449,9 @@ if(S_KnockoutMode) {
         }
         if(G_Knockout_Players.count >= C_MinimalPlayerCount) {
             if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
-                G_Knockout_Stage = C_Knockout_Stage_First;
+                KnockoutSetStage(C_Knockout_Stage_First);
             } else {
-                G_Knockout_Stage = C_Knockout_Stage_Last;
+                KnockoutSetStage(C_Knockout_Stage_Last);
             }
         }
         G_Knockout_FirstRound = True;
@@ -557,7 +560,7 @@ if(IsAllowedToPlay(Player)) {
 
             if(G_Knockout_Stage == C_Knockout_Stage_Last) {
                 if(G_Knockout_Players.count > S_KnockoutMode_LastStage_Players) {
-                    G_Knockout_Stage = C_Knockout_Stage_First;
+                    KnockoutSetStage(C_Knockout_Stage_First);
                     UpdateScoresTableFooter();
                 }
             }
@@ -904,8 +907,7 @@ if(!G_QuickRestart) {
             }
 
             if(NewPlayersCount <= S_KnockoutMode_LastStage_Players) {
-                G_Knockout_Stage = C_Knockout_Stage_Last;
-                G_Knockout_RoundNb = 0;
+                KnockoutSetStage(C_Knockout_Stage_Last);
 
                 KnockoutMessage("Only $080" ^ NewPlayersCount ^ "$z$s player(s) left!");
                 KnockoutMessage("No more players will be knocked out!");
@@ -941,9 +943,14 @@ if(!G_QuickRestart) {
 
 ***
 
-***EndMap***
+***EndSubmatch***
 ***
 IScores::MatchEnd();
+
+***
+
+***EndMap***
+***
 
 UIManager.UIAll.BigMessage    = "";
 UIManager.UIAll.StatusMessage = "";
@@ -1025,11 +1032,10 @@ Void Debug(Text _Message) {
 Void KnockoutInit() {
     G_Knockout_Players.clear();
     if(S_KnockoutMode) {
-        G_Knockout_Stage = C_Knockout_Stage_Init;
+        KnockoutSetStage(C_Knockout_Stage_Init);
     } else {
-        G_Knockout_Stage = C_Knockout_Stage_None;
+        KnockoutSetStage(C_Knockout_Stage_None);
     }
-    G_Knockout_RoundNb = 0;
 }
 
 Void InitGame() {
@@ -2259,6 +2265,27 @@ Void NonoperationalPlayLoop() {
 
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
+}
+
+Void KnockoutSetStage(Integer _Stage) {
+    if(G_Knockout_Stage == _Stage)
+        return;
+
+    switch(_Stage) {
+        case C_Knockout_Stage_Last:
+        {
+            if(S_KnockoutMode_LastStage_NewScores) {
+                if(G_Knockout_Stage == C_Knockout_Stage_First) {
+                    // Reset scores only if previous stage was `first`
+                    IScores::MatchEnd();
+                    IScores::MatchBegin();
+                }
+            }
+        }
+    }
+
+    G_Knockout_Stage = _Stage;
+    G_Knockout_RoundNb = 0;
 }
 
 Void KnockoutMessage(Text _Message) {
