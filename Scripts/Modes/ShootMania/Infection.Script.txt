@@ -666,7 +666,7 @@ foreach(Event in PendingEvents) {
             declare VictimInfected  = IsInfected(Event.Victim);
             if(VictimInfected && !ShooterInfected) {
                 // OnSurvivorHitInfected
-                if(S_HitInfectedScore != 0) {
+                if(S_HitInfectedScore >= 0) {
                     OnHit(Event, S_HitInfectedScore);
                     PassOn(Event);
                 } else {
@@ -674,7 +674,7 @@ foreach(Event in PendingEvents) {
                 }
             } else if(!VictimInfected && !ShooterInfected) {
                 // OnSurvivorHitSurvivor
-                if(S_PVP && S_HitSurvivorScore != 0) {
+                if(S_PVP && S_HitSurvivorScore >= 0) {
                     OnHit(Event, S_HitSurvivorScore);
                     PassOn(Event);
                 } else {
