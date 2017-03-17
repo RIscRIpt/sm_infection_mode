@@ -517,6 +517,9 @@ if(IsOperating()) {
     foreach(Gate in G_CondGates_Up_Always) {
         SetGateOpened(Gate, True);
     }
+
+    // Hide infected count
+    G_InfectedPlayerCount = -1;
 }
 
 // Clear infection tree
@@ -1122,6 +1125,8 @@ Boolean IsInfected(CSmPlayer _Player) {
 }
 
 Integer CountInfected() {
+    if(!IsOperating())
+        return -1;
     declare Integer Count = 0;
     foreach(Player in Players) {
         if(IsInfected(Player) && IsAllowedToPlay(Player))
@@ -2457,8 +2462,15 @@ Text GenerateManialink() {
 
                 IsSpawned = InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned;
 
-                Label_Infected.Value = TL::ToText(Net_InfectedCount);
-                Label_Players.Value  = TL::ToText(Net_PlayerCount) ^ " infected";
+                if(Net_InfectedCount >= 0) {
+                    Label_Infected.Visible = True;
+                    Label_Players.Visible  = True;
+                    Label_Infected.Value   = TL::ToText(Net_InfectedCount);
+                    Label_Players.Value    = TL::ToText(Net_PlayerCount) ^ " infected";
+                } else {
+                    Label_Infected.Visible = False;
+                    Label_Players.Visible  = False;
+                }
 
                 if(Net_Infected && IsSpawned) {
                     if(!Frame_NearestSurvivor.Visible) {
