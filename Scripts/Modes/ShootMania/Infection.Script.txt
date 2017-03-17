@@ -2421,7 +2421,7 @@ Void InfectionXmlRpcLoop() {
 
 Text GenerateManialink() {
     return """
-        <frame posn="122 -82.5">
+        <frame posn="122 -82.5" id="CountsFrame">
             <label style="TextRaceMessage" posn="0 0" valign="center" halign="right" textcolor="{{{TL::ColorToText(C_InfectedColor)}}}" id="Infected"/>
             <label style="TextRaceMessage" posn="1 0" valign="center" halign="center" textcolor="fff" text="/" />
             <label style="TextRaceMessage" posn="2 0" valign="center" halign="left" textcolor="fff" id="Players"/>
@@ -2453,6 +2453,7 @@ Text GenerateManialink() {
             declare Real NearestSurvivor = 0.0;
             declare Boolean IsSpawned = False;
 
+            declare Frame_CountsFrame     = (Page.GetFirstChild("CountsFrame")          as CMlFrame);
             declare Label_Infected        = (Page.GetFirstChild("Infected")             as CMlLabel);
             declare Label_Players         = (Page.GetFirstChild("Players")              as CMlLabel);
             declare Label_Idle_Text       = (Page.GetFirstChild("Idle_Text")            as CMlLabel);
@@ -2465,13 +2466,13 @@ Text GenerateManialink() {
                 IsSpawned = InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned;
 
                 if(Net_InfectedCount >= 0) {
-                    Label_Infected.Visible = True;
-                    Label_Players.Visible  = True;
+                    if(!Frame_CountsFrame.Visible)
+                        Frame_CountsFrame.Visible = True;
                     Label_Infected.Value   = TL::ToText(Net_InfectedCount);
                     Label_Players.Value    = TL::ToText(Net_PlayerCount) ^ " infected";
                 } else {
-                    Label_Infected.Visible = False;
-                    Label_Players.Visible  = False;
+                    if(Frame_CountsFrame.Visible)
+                        Frame_CountsFrame.Visible = False;
                 }
 
                 if(Net_Infected && IsSpawned) {
