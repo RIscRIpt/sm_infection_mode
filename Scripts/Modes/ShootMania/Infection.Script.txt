@@ -497,8 +497,11 @@ if(IsOperating()) {
     if(S_KnockoutMode) {
         if(G_Knockout_Stage == C_Knockout_Stage_First) {
             declare Integer ToKnockout = GetNbOfPlayersToKO();
-            if(ToKnockout > 0)
+            if(ToKnockout > 0) {
                 KnockoutMessage(ToKnockout ^ " worst player(s) will be knocked out this round!");
+            } else {
+                KnockoutMessage("No one will be knockout this round!");
+            }
         }
     }
 } else {
