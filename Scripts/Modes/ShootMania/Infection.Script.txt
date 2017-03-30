@@ -49,7 +49,7 @@
 #Setting S_UseClans                         True        as "use teams (need map restart)"
 #Setting S_UseSameWallJump                  False       as "allow escalator jump (need round restart)"
 #Setting S_RespawnOnInfection               True        as "respawn on infection (need `use teams` == False)"
-#Setting S_SurvivorRespawnPunishment        4           as "survivor respawn punishment"
+#Setting S_SurvivorRespawnPunishment        0           as "survivor respawn punishment"
 #Setting S_HitSurvivorScore                 0           as "hit survivor score (for PvP mode)"
 #Setting S_HitInfectedScore                 1           as "hit infected score"
 #Setting S_ScoreForSurv1Inf                 1           as "score for surviving single infection"
@@ -2178,7 +2178,9 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
                         Infect(Player);
                     }
                 }
-                IScores::AddPoints(Player, -S_SurvivorRespawnPunishment);
+                if(S_SurvivorRespawnPunishment != 0) {
+                    IScores::AddPoints(Player, -S_SurvivorRespawnPunishment);
+                }
             }
 
             if(IsInfected(Player)) {
