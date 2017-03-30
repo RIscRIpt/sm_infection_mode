@@ -94,6 +94,7 @@
 #Setting S_KnockoutMode_LastStage_NewScores True        as "reset scores for last knockout stage"
 #Setting S_KnockoutMode_Kick                False       as "knockout method (kick=True, spec=False)"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
+#Setting S_SendBigInfectionMessage          0           as "send old style big infection message (ms)"
 
 #Const   C_MaxSignedInteger                 2147483647
 
@@ -1554,6 +1555,10 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
             );
         }
 
+        if(S_SendBigInfectionMessage > 0) {
+            Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), S_SendBigInfectionMessage, 0);
+        }
+
         // Update infection graph
         ITree::Infect(_Victim.Login, _Infector.Login);
     } else {
@@ -1568,8 +1573,16 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
             );
         }
 
+        if(S_SendBigInfectionMessage > 0) {
+            Message::SendStatusMessage(TL::Compose("%1$z$s was infected!", _Victim.Name), S_SendBigInfectionMessage, 0);
+        }
+
         // Update infection graph
         ITree::Infect(_Victim.Login);
+    }
+
+    if(S_SendBigInfectionMessage > 0) {
+        Message::SendBigMessage(_Victim, "$360Infected!", S_SendBigInfectionMessage, 0);
     }
 
     if(G_InfectedPlayerCount == PlayersCount() - 1) {
