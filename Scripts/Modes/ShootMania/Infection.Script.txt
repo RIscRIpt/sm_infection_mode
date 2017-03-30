@@ -595,7 +595,6 @@ if(UI != Null) {
     Tabs::UseTabs(UI, "ScoresTab");
     UI.SpectatorForcedClan       = 0;
     UI.SpectatorForceCameraType  = 15;
-    UI.OverlayHideSpectatorInfos = True;
 }
 
 ***
