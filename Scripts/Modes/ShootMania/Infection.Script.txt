@@ -725,12 +725,10 @@ declare Boolean PlayerCountChanged = False;
 
 // The most reliable way of checking of player count changes.
 // It's done in one place, so updated only once per playloop iteration.
-if(!IsKnockoutStarted()) {
-    PlayerCountChanged = Prev_PlayerCount != Players.count;
-} else {
-    PlayerCountChanged = Prev_PlayerCount != G_Knockout_Players.count;
-}
-if(PlayerCountChanged) {
+if(Prev_PlayerCount != Players.count
+|| IsKnockoutStarted() && Prev_PlayerCount != G_Knockout_Players.count
+) {
+    PlayerCountChanged = True;
 
     if(S_KnockoutMode) {
         // Cleanup allowed players
