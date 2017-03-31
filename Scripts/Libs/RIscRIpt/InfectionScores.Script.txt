@@ -5,7 +5,7 @@
 #Include "MathLib" as ML
 #Include "Libs/Nadeo/Top2.Script.txt" as Top
 #Include "Libs/Nadeo/ScoresTable2.Script.txt" as ST
-#Include "Libs/Nadeo/ShootMania/Score.Script.txt" as Scores
+#Include "Libs/RIscRIpt/Score.Script.txt" as Scores
 
 #Const  C_Status_Spectator              0
 #Const  C_Status_Survivor               1
