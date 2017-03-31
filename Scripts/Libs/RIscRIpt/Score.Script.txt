@@ -1,0 +1,72 @@
+#Const Version      "2017-03-31"
+#Const ScriptName   "Score.Script.txt"
+
+#Include "MathLib" as MathLib
+#Include "TextLib" as TextLib
+#Include "Libs/Nadeo/Mode.Script.txt" as Mode
+
+declare Boolean G_LibScore_UseLadder;
+
+Text GetScriptVersion() {
+    return Version;
+}
+
+Text GetScriptName() {
+    return ScriptName;
+}
+
+Void MatchBegin(Boolean _G_LibScore_UseLadder) {
+    G_LibScore_UseLadder = _G_LibScore_UseLadder;
+    if(G_LibScore_UseLadder)
+        Mode::Ladder_OpenMatch_All();
+    This.ClearScores();
+}
+
+Void MatchBegin() {
+    MatchBegin(True);
+}
+
+Void MatchEnd(Boolean UpdateLadder) {
+    if(G_LibScore_UseLadder) {
+        if(UpdateLadder) {
+            foreach(Score in Scores) {
+                Score.LadderRankSortValue = - 1 - Score.Points;
+            }
+            Mode::Ladder_CloseMatch();
+        } else {
+            Mode::Ladder_CancelMatch();
+        }
+    }
+}
+
+Void MatchEnd() {
+    MatchEnd(True);
+}
+
+Void ClearScores() {
+    This.ClearScores();
+}
+
+Void RoundBegin() {
+    foreach(Score in Scores) {
+        Score.RoundPoints = 0;
+    }
+}
+
+Void RoundEnd() {
+    foreach(Score in Scores) {
+        Score.Points += Score.RoundPoints;
+        Score.RoundPoints = 0;
+    }
+}
+
+Void AddPoints(CSmPlayer _Player, Integer _Points) {
+    if(_Player != Null && _Player.Score != Null) {
+        _Player.Score.RoundPoints += _Points;
+    }
+}
+
+Void ReducePoints(CSmPlayer _Player, Integer _Points) {
+    AddPoints(_Player, -_Points);
+}
+
