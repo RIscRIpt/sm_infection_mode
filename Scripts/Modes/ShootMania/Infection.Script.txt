@@ -719,6 +719,7 @@ if(S_KnockoutMode && G_Knockout_Stage == C_Knockout_Stage_None) {
 InfectionXmlRpcLoop();
 
 declare Integer Prev_PlayerCount         for This = -1;
+declare Integer Prev_KOPlayerCount       for This = -1;
 declare Integer Prev_InfectedPlayerCount for This = -1;
 
 declare Boolean PlayerCountChanged = False;
@@ -726,7 +727,7 @@ declare Boolean PlayerCountChanged = False;
 // The most reliable way of checking of player count changes.
 // It's done in one place, so updated only once per playloop iteration.
 if(Prev_PlayerCount != Players.count
-|| IsKnockoutStarted() && Prev_PlayerCount != G_Knockout_Players.count
+|| Prev_KOPlayerCount != G_Knockout_Players.count
 ) {
     PlayerCountChanged = True;
 
@@ -748,8 +749,9 @@ if(Prev_PlayerCount != Players.count
     }
 
     declare netwrite Integer Net_PlayerCount for Teams[0];
-    Prev_PlayerCount = PlayersCount();
-    Net_PlayerCount  = Prev_PlayerCount;
+    Net_PlayerCount    = PlayersCount();
+    Prev_PlayerCount   = Players.count;
+    Prev_KOPlayerCount = G_Knockout_Players.count;
 
     // Infected player count might be changed too
     G_InfectedPlayerCount = CountInfected();
