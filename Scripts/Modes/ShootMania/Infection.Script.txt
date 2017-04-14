@@ -557,7 +557,7 @@ if(IsAllowedToPlay(Player)) {
     }
     if(IsOperating() && G_InfectionStarted && S_InfectNewPlayers) {
         if(!IsInfected(Player)) {
-            Infect(Player);
+            Infect(Player, Null, "", True);
         }
     }
     if(S_KnockoutMode) {
@@ -1479,7 +1479,7 @@ Void OnHit(CSmModeEvent _Event, Integer _PointsForHit) {
     IScores::IncHits(_Event.Shooter, _PointsForHit);
 }
 
-Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
+Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt, Boolean _SuppressNotifications) {
     if(_Victim == Null)
         return;
 
@@ -1535,84 +1535,87 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
 
     RewardSurvivorsForSurvivingInfection();
 
-    // SendNotice to all players about infection,
-    // and update infection graph
-    if(_Infector != Null) {
-        foreach(Player in AllPlayers) {
-            declare Text Message;
-            if(Player == _Infector) {
-                Message = TL::Compose(C_TxtYouInfectedA, _Victim.Name);
-            } else if (Player == _Victim) {
-                Message = TL::Compose(C_TxtAInfectedYou, _Infector.Name);
-            } else {
-                Message = TL::Compose(C_TxtAInfectedB, _Infector.Name, _Victim.Name);
+    // SendNotice to all players about infection
+    if(!_SuppressNotifications) {
+        if(_Infector != Null) {
+            foreach(Player in AllPlayers) {
+                declare Text Message;
+                if(Player == _Infector) {
+                    Message = TL::Compose(C_TxtYouInfectedA, _Victim.Name);
+                } else if (Player == _Victim) {
+                    Message = TL::Compose(C_TxtAInfectedYou, _Infector.Name);
+                } else {
+                    Message = TL::Compose(C_TxtAInfectedB, _Infector.Name, _Victim.Name);
+                }
+                UIManager.GetUI(Player).SendNotice(
+                    Message,
+                    CUIConfig::ENoticeLevel::PlayerInfo,
+                    _Infector.User,
+                    CUIConfig::EAvatarVariant::Default,
+                    CUIConfig::EUISound::PlayerHit,
+                    0
+                );
             }
-            UIManager.GetUI(Player).SendNotice(
-                Message,
-                CUIConfig::ENoticeLevel::PlayerInfo,
-                _Infector.User,
-                CUIConfig::EAvatarVariant::Default,
-                CUIConfig::EUISound::PlayerHit,
-                0
-            );
+
+            if(S_SendBigInfectionMessage > 0) {
+                Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), S_SendBigInfectionMessage, 0);
+            }
+        } else {
+            if(_CauseFmt != "") {
+                UIManager.UIAll.SendNotice(
+                    TL::Compose(_CauseFmt, _Victim.Name),
+                    CUIConfig::ENoticeLevel::PlayerInfo,
+                    _Victim.User,
+                    CUIConfig::EAvatarVariant::Default,
+                    CUIConfig::EUISound::PlayerHit,
+                    0
+                );
+            }
+
+            if(S_SendBigInfectionMessage > 0) {
+                Message::SendStatusMessage(TL::Compose("%1$z$s was infected!", _Victim.Name), S_SendBigInfectionMessage, 0);
+            }
         }
 
         if(S_SendBigInfectionMessage > 0) {
-            Message::SendStatusMessage(TL::Compose("%1$z$s infected %2$z$s!", _Infector.Name, _Victim.Name), S_SendBigInfectionMessage, 0);
+            Message::SendBigMessage(_Victim, "$360Infected!", S_SendBigInfectionMessage, 0);
         }
 
-        // Update infection graph
+        // Display last survivor
+        if(G_InfectedPlayerCount == PlayersCount() - 1) {
+            // Get last survivor
+            declare CSmPlayer LastSurvivor = Null;
+            foreach(Player in Players) {
+                if(!IsInfected(Player) && IsAllowedToPlay(Player)) {
+                    LastSurvivor = Player;
+                    break;
+                }
+            }
+            if(LastSurvivor != Null) {
+                Message::SendBigMessage(
+                    TL::Compose(
+                        "%1$z$s is the last survivor!",
+                        LastSurvivor.Name
+                    ),
+                    C_LastSurvivorMsgDuration,
+                    C_LastSurvivorMsgPriority
+                );
+            }
+        }
+    }
+
+    // Update infection graph
+    if(_Infector != Null) {
         ITree::Infect(_Victim.Login, _Infector.Login);
     } else {
-        if(_CauseFmt != "") {
-            UIManager.UIAll.SendNotice(
-                TL::Compose(_CauseFmt, _Victim.Name),
-                CUIConfig::ENoticeLevel::PlayerInfo,
-                _Victim.User,
-                CUIConfig::EAvatarVariant::Default,
-                CUIConfig::EUISound::PlayerHit,
-                0
-            );
-        }
-
-        if(S_SendBigInfectionMessage > 0) {
-            Message::SendStatusMessage(TL::Compose("%1$z$s was infected!", _Victim.Name), S_SendBigInfectionMessage, 0);
-        }
-
-        // Update infection graph
         ITree::Infect(_Victim.Login);
-    }
-
-    if(S_SendBigInfectionMessage > 0) {
-        Message::SendBigMessage(_Victim, "$360Infected!", S_SendBigInfectionMessage, 0);
-    }
-
-    if(G_InfectedPlayerCount == PlayersCount() - 1) {
-        // Get last survivor
-        declare CSmPlayer LastSurvivor = Null;
-        foreach(Player in Players) {
-            if(!IsInfected(Player) && IsAllowedToPlay(Player)) {
-                LastSurvivor = Player;
-                break;
-            }
-        }
-        if(LastSurvivor != Null) {
-            Message::SendBigMessage(
-                TL::Compose(
-                    "%1$z$s is the last survivor!",
-                    LastSurvivor.Name
-                ),
-                C_LastSurvivorMsgDuration,
-                C_LastSurvivorMsgPriority
-            );
-        }
     }
 
     XmlRpc.SendCallbackArray(C_Inf_XmlClb_Infected, [InfectorLogin, _Victim.Login]);
 }
 
-Void Infect(CSmPlayer _Victim, Text _CauseFmt) {
-    Infect(_Victim, Null, _CauseFmt);
+Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
+    Infect(_Victim, _Infector, _CauseFmt, False);
 }
 
 Void Infect(CSmPlayer _Victim, CSmPlayer _Infector) {
@@ -1677,7 +1680,7 @@ Void ManageMapWaterEffectsForSurvivor(CSmPlayer _Player) {
         }
         if(G_MapSetting_WaterForSurvivors_Infects) {
             if(!IsInfected(_Player)) {
-                Infect(_Player, C_TxtPlayerInfectedByWater);
+                Infect(_Player, Null, C_TxtPlayerInfectedByWater);
             }
         }
         if(G_MapSetting_WaterForSurvivors_Heals) {
@@ -1745,7 +1748,7 @@ Void ManageMapLeaver(CSmPlayer _Player) {
                     2
                     );
         } else {
-            Infect(_Player, C_TxtPlayerWasEliminated);
+            Infect(_Player, Null, C_TxtPlayerWasEliminated);
         }
     } else if(LeftMapSince != -1) {
         LeftMapSince = -1;
