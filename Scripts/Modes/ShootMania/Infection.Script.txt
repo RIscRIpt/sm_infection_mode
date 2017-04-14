@@ -52,6 +52,7 @@
 #Setting S_SurvivorRespawnPunishment        0           as "survivor respawn punishment"
 #Setting S_HitSurvivorScore                 0           as "hit survivor score (for PvP mode)"
 #Setting S_HitInfectedScore                 1           as "hit infected score"
+#Setting S_MaxDamage                        100         as "max hit damage"
 #Setting S_ScoreForSurv1Inf                 1           as "score for surviving single infection"
 #Setting S_TimeLimit                        300000      as "time limit for a round"
 #Setting S_ScoreLimit                       100         as "score limit for a match"
@@ -93,8 +94,8 @@
 #Setting S_KnockoutMode_LastStage_Players   8           as "number of required players for last stage"
 #Setting S_KnockoutMode_LastStage_NewScores True        as "reset scores for last knockout stage"
 #Setting S_KnockoutMode_Kick                False       as "knockout method (kick=True, spec=False)"
-#Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 #Setting S_SendBigInfectionMessage          0           as "send old style big infection message (ms)"
+#Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
 
@@ -669,6 +670,7 @@ foreach(Event in PendingEvents) {
                 Discard(Event);
                 continue;
             }
+            Event.Damage = ML::Clamp(Event.Damage, 0, S_MaxDamage);
             declare ShooterInfected = IsInfected(Event.Shooter);
             declare VictimInfected  = IsInfected(Event.Victim);
             if(VictimInfected && !ShooterInfected) {
@@ -1473,8 +1475,8 @@ Boolean IsProtectedByMap(CSmPlayer _Player) {
     return False;
 }
 
-Void OnHit(CSmModeEvent _Event, Integer _Multiplier) {
-    IScores::IncHits(_Event.Shooter, _Event.Damage * _Multiplier / C_ArmorUnit);
+Void OnHit(CSmModeEvent _Event, Integer _PointsForHit) {
+    IScores::IncHits(_Event.Shooter, _PointsForHit);
 }
 
 Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt) {
