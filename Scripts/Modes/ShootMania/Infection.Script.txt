@@ -281,9 +281,9 @@ IScores::Load();
 ITree::Load();
 Tabs::Load();
 declare TabsLayer <=> Tabs::CreateTabPaneLayer([
-    "TopTab"     => "Buddies",
+    "InfTreeTab" => "Statistics",
     "ScoresTab"  => "Rankings",
-    "InfTreeTab" => "Statistics"
+    "TopTab"     => "Buddies"
 ], 30, -5, False);
 TabsLayer.Type = CUILayer::EUILayerType::AltMenu;
 UIManager.UIAll.UILayers.add(TabsLayer);
