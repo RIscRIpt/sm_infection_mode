@@ -94,7 +94,7 @@
 #Setting S_KnockoutMode_LastStage_Players   8           as "number of required players for last stage"
 #Setting S_KnockoutMode_LastStage_NewScores True        as "reset scores for last knockout stage"
 #Setting S_KnockoutMode_Kick                False       as "knockout method (kick=True, spec=False)"
-#Setting S_SendBigInfectionMessage          0           as "send old style big infection message (ms)"
+#Setting S_SendBigInfectionMessage          2000        as "send old style big infection message (ms)"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
