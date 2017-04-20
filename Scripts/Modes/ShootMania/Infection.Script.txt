@@ -95,6 +95,8 @@
 #Setting S_KnockoutMode_LastStage_NewScores True        as "reset scores for last knockout stage"
 #Setting S_KnockoutMode_Kick                False       as "knockout method (kick=True, spec=False)"
 #Setting S_SendBigInfectionMessage          2000        as "send old style big infection message (ms)"
+#Setting S_RoundPauseTime                   4000        as "<hidden>"
+#Setting S_MatchPauseTime                   6000        as "<hidden>"
 #Setting S_Debug                            False       as "<hidden>" //as "display debug information into chat and console"
 
 #Const   C_MaxSignedInteger                 2147483647
@@ -113,8 +115,6 @@
 #Const   C_InfectedHasShield                True
 #Const   C_InfectedIsHighlighted            False
 #Const   C_InfectedEnergyLevel              1.0
-#Const   C_RoundPauseTime                   4000
-#Const   C_MatchPauseTime                   6000
 
 #Const   C_MainManialinkLayer               "Infection_MainManialinkLayer"
 
@@ -948,7 +948,7 @@ if(!G_QuickRestart) {
         G_Knockout_FirstRound = False;
     }
 
-    MB_Sleep(C_RoundPauseTime);
+    MB_Sleep(S_RoundPauseTime);
 
     UIManager.UIAll.BigMessageSound      = CUIConfig::EUISound::Silence;
     UIManager.UIAll.BigMessage           = "";
@@ -1010,7 +1010,7 @@ UIManager.UIAll.BigMessageSound         = CUIConfig::EUISound::EndRound;
 UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::ForcedVisible;
 UIManager.UIAll.UISequence              = CUIConfig::EUISequence::Podium;
 
-MB_Sleep(C_MatchPauseTime);
+MB_Sleep(S_MatchPauseTime);
 
 UIManager.UIAll.ScoreTableVisibility    = CUIConfig::EVisibility::Normal;
 UIManager.UIAll.BigMessage              = "";
