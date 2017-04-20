@@ -593,6 +593,10 @@ UpdateScoresStatus(Spectator);
 
 declare UI <=> UIManager.GetUI(Spectator);
 
+if(G_ProtectionQueue.exists(Spectator.Id)) {
+    G_ProtectionQueue.remove(Spectator.Id);
+}
+
 if(UI != Null) {
     Tabs::UseTabs(UI, "ScoresTab");
     UI.SpectatorForcedClan       = 0;
