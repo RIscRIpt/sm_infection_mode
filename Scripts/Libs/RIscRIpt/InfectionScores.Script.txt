@@ -27,7 +27,7 @@
 #Const  C_TitleTopSurvivals             "Top Survivals"
 
 #Const  C_ST_Columns                    2
-#Const  C_ST_Rows                       8
+#Const  C_ST_Rows                       7
 
 #Const  C_ST_Scale                      0.95
 #Const  C_ST_Size_Header                <-1.0, -1.0>
