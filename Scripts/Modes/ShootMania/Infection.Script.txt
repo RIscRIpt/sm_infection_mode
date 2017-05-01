@@ -1242,12 +1242,28 @@ Void CalcAndDisplayInfChance() {
             DisplayDuration = S_PreparationTime;
         }
 
-        Message::SendStatusMessage(
-            Player,
-            TL::Compose("Your chance of being infected: $080%1%%", TL::ToText(ML::NearestInteger(ProbFirstInf * 100.0))),
-            DisplayDuration,
-            1
-        );
+        if(ProbFirstInf >= 0.01) {
+            Message::SendStatusMessage(
+                Player,
+                TL::Compose("Your chance of being infected is $080%1%%", TL::ToText(ML::NearestInteger(ProbFirstInf * 100.0))),
+                DisplayDuration,
+                1
+            );
+        } else if(ProbFirstInf > 0.0) {
+            Message::SendStatusMessage(
+                Player,
+                "Your chance of being infected is incredibly small",
+                DisplayDuration,
+                1
+            );
+        } else {
+            Message::SendStatusMessage(
+                Player,
+                "You have no chance of being infected",
+                DisplayDuration,
+                1
+            );
+        }
     }
 }
 
