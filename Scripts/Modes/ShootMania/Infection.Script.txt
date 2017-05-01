@@ -1503,8 +1503,8 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt, Boolean _Sup
     declare netwrite Boolean Net_Infected     for _Victim;
     declare netwrite Real Net_NearestSurvivor for _Victim;
 
-    declare Ident InfectorId  for _Victim;
-    declare Boolean Infected  for _Victim = S_InfectNewPlayers;
+    declare Ident InfectorId for _Victim;
+    declare Boolean Infected for _Victim;
 
     declare Integer InfectionTime for _Victim;
 
@@ -1526,6 +1526,8 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt, Boolean _Sup
         }
 
         InfectorLogin = _Infector.Login;
+    } else {
+        InfectorId = NullId;
     }
 
     G_InfectedPlayerCount += 1;
