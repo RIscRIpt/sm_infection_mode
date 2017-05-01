@@ -496,6 +496,8 @@ if(IsOperating()) {
 
     CalcAndDisplayInfChance();
 
+    Debug("Protection queue: " ^ G_ProtectionQueue);
+
     if(S_KnockoutMode) {
         if(G_Knockout_Stage == C_Knockout_Stage_First) {
             declare Integer ToKnockout = GetNbOfPlayersToKO();
@@ -594,6 +596,7 @@ UpdateScoresStatus(Spectator);
 declare UI <=> UIManager.GetUI(Spectator);
 
 if(G_ProtectionQueue.exists(Spectator.Id)) {
+    Debug("Removing " ^ Spectator.Name ^ "$z$s from protection queue");
     G_ProtectionQueue.remove(Spectator.Id);
 }
 
@@ -641,6 +644,7 @@ if(EndTime > -1 && EndTime <= Now) {
                 Infect(FirstInfected);
             }
 
+            Debug("Adding " ^ FirstInfected.Name ^ "$z$s to protection queue");
             G_ProtectionQueue.add(FirstInfected.Id);
             CropProtectionQueue();
 
@@ -1077,6 +1081,7 @@ Void KnockoutInit() {
 Void InitGame() {
     G_InfectedPlayerCount = 0;
 
+    Debug("Clearing protection queue");
     G_ProtectionQueue.clear();
 
     KnockoutInit();
