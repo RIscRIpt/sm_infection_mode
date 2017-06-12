@@ -713,6 +713,14 @@ foreach(Event in PendingEvents) {
                 Discard(Event);
             }
         }
+        case CSmModeEvent::EType::OnPlayerAdded:
+        {
+            if(S_BlacklistURL != "") {
+                if(Event.Player != Null) {
+                    Blacklist::Check(Event.Player.User);
+                }
+            }
+        }
         default:
         {
             PassOn(Event);

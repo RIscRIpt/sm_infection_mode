@@ -20,7 +20,6 @@
 #Const C_LibBlacklist_UserMessage		"You have been banned. Reason: %1."
 #Const C_LibBlacklist_ChatMessage		"User $<%1$> has been banned. Reason: %2."
 #Const C_LibBlacklist_DefaultReason		"not specified"
-#Const C_LibBlacklist_CheckInterval		60000
 #Const C_LibBlacklist_HttpReqInterval	300000
 #Const C_LibBlacklist_HttpReqTimeout	15000
 
@@ -30,8 +29,6 @@
 declare Text G_LibBlacklist_BlacklistURL;			///< URL of the blacklist file
 declare Text[Text] G_LibBlacklist_BannedUsers;		///< List of all banned users with their ban reason
 declare Text[] G_LibBlacklist_ShownReasons;			///< List with logins of users kicked at least once per map
-declare Integer G_LibBlacklist_NextUsersCheck;		///< Time of the users next validation
-declare Integer G_LibBlacklist_PrevUsersCount;		///< Previous amount of connected users
 declare Integer G_LibBlacklist_NextRequestTime;		///< Time of the next blacklist update
 declare CHttpRequest G_LibBlacklist_Request;		///< Blacklist document request
 declare Integer G_LibBlacklist_RequestStartTime;	///< Request start time
@@ -78,8 +75,8 @@ Void Private_UpdateBlacklistFromXML(Text _Result) {
  *	@param	_URL	New blacklist file address
  */
 Void Private_ChangeBlacklistURL(Text _URL) {
-	if (_URL == "" || !Http.IsValidUrl(_URL)) {
-		G_LibBlacklist_BlacklistURL = C_LibBlacklist_DefaultListURL;
+	if (!Http.IsValidUrl(_URL)) {
+		G_LibBlacklist_BlacklistURL = "";
 		return;
 	}
 	G_LibBlacklist_BlacklistURL = _URL;
@@ -135,6 +132,7 @@ Void Loop(Text _BlacklistURL) {
 		// Request finished
 		if (G_LibBlacklist_Request.IsCompleted) {
 			Private_UpdateBlacklistFromXML(G_LibBlacklist_Request.Result);
+			CheckAllPlayers();
 			Http.Destroy(G_LibBlacklist_Request);
 			G_LibBlacklist_Request = Null;
 		}
@@ -148,32 +146,6 @@ Void Loop(Text _BlacklistURL) {
 	}
 	
 	// ---------------------------------- //
-	// Kick banned users trying to connect or already connected
-	if (Users.count > 0 && (Now >= G_LibBlacklist_NextUsersCheck || G_LibBlacklist_PrevUsersCount != Users.count)) {
-		G_LibBlacklist_PrevUsersCount = Users.count;
-		
-		foreach (User in Users) {
-			if (User.Login != ServerLogin && G_LibBlacklist_BannedUsers.existskey(User.Login)) {
-				declare Reason = G_LibBlacklist_BannedUsers[User.Login];
-				
-				// Notify all players on the server about kick
-				if (!G_LibBlacklist_ShownReasons.exists(User.Login)) {
-					G_LibBlacklist_ShownReasons.add(User.Login);
-					UIManager.UIAll.SendChat(
-						TL::Compose(C_LibBlacklist_ChatMessage, User.Name, Reason)
-					);
-				}
-				
-				// Kick the user
-				Admin_KickUser(User, TL::Compose(C_LibBlacklist_UserMessage, Reason));
-			}
-		}
-		
-		// Set next validation time
-		G_LibBlacklist_NextUsersCheck = Now + C_LibBlacklist_CheckInterval;
-	}
-	
-	// ---------------------------------- //
 	// Clear displayed reason on map change
 	if (G_LibBlacklist_PrevMapLoaded != MapLoaded) {
 		G_LibBlacklist_PrevMapLoaded = MapLoaded;
@@ -181,6 +153,26 @@ Void Loop(Text _BlacklistURL) {
 	}
 }
 
-// ---------------------------------- //
-/// Loop using default blacklist file
-Void Loop() { Loop(C_LibBlacklist_DefaultListURL); }
+Void CheckUser(CUser _User) {
+	if (_User == Null) return;
+	if (_User.Login != ServerLogin && G_LibBlacklist_BannedUsers.existskey(_User.Login)) {
+		declare Reason = G_LibBlacklist_BannedUsers[_User.Login];
+		
+		// Notify all players on the server about kick
+		if (!G_LibBlacklist_ShownReasons.exists(_User.Login)) {
+			G_LibBlacklist_ShownReasons.add(_User.Login);
+			UIManager.UIAll.SendChat(
+				TL::Compose(C_LibBlacklist_ChatMessage, _User.Name, Reason)
+			);
+		}
+		
+		// Kick the user
+		Admin_KickUser(_User, TL::Compose(C_LibBlacklist_UserMessage, Reason));
+	}
+}
+
+Void CheckAllUsers() {
+	foreach (User in Users) {
+		CheckUser(User);
+	}
+}
