@@ -21,7 +21,7 @@
 
 #Extends "Modes/ShootMania/ModeBase.Script.txt"
 
-#Const Version    "2017-02-22"
+#Const Version    "2017-06-17"
 #Const ScriptName "Infection.Script.txt"
 
 #Include "TextLib" as TL
@@ -34,6 +34,7 @@
 #Include "Libs/Nadeo/Manialink.Script.txt" as Manialink
 #Include "Libs/RIscRIpt/InfectionTree.Script.txt" as ITree
 #Include "Libs/RIscRIpt/InfectionScores.Script.txt" as IScores
+#Include "Libs/domino54/Blacklist.Script.txt" as Blacklist
 
 #Setting S_Paused                           False       as "<hidden>" //as "enable pause"
 #Setting S_PauseMessage                     ""          as "<hidden>" //as "pause message (bigmessage; statusmessage)"
@@ -99,6 +100,7 @@
 #Setting S_SurvivorRocketMax                4           as "survivor maximum rockets"
 #Setting S_SurvivorNucleusMax               1           as "<hidden>"
 #Setting S_SurvivorArrowMax                 2           as "<hidden>"
+#Setting S_BlacklistURL	                    ""		    as "<hidden>" // URL of the blacklist file
 
 #Const   C_MaxSignedInteger                 2147483647
 
@@ -264,6 +266,7 @@ MB_LogVersion(IScores::GetScriptName()     , IScores::GetScriptVersion());
 MB_LogVersion(SpawnScreen::GetScriptName() , SpawnScreen::GetScriptVersion());
 MB_LogVersion(Manialink::GetScriptName()   , Manialink::GetScriptVersion());
 MB_LogVersion(ITree::GetScriptName()       , ITree::GetScriptVersion());
+MB_LogVersion(Blacklist::GetScriptName()   , Blacklist::GetScriptVersion());
 ***
 
 ***InitServer***
@@ -615,6 +618,9 @@ Message::Loop();
 Tabs::XmlRpcLoop();
 IScores::Loop();
 ITree::Loop();
+if(S_BlacklistURL != "") {
+    Blacklist::Loop(S_BlacklistURL);
+}
 ***
 
 ***PlayLoop***
