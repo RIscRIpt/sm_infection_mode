@@ -717,7 +717,7 @@ foreach(Event in PendingEvents) {
         {
             if(S_BlacklistURL != "") {
                 if(Event.Player != Null) {
-                    Blacklist::Check(Event.Player.User);
+                    Blacklist::CheckUser(Event.Player.User);
                 }
             }
         }
