@@ -3,28 +3,22 @@
  * https://github.com/domino54/title-packs/blob/master/Scripts/Libs/domino54/Blacklist.Script.txt
  */
 
-// -------------------------------------- //
-//  LIBRARY BLACKLIST by domino54         //
-//  script version: 2016-06-23            //
-// -------------------------------------- //
+// -------------------------------------------- //
+//  LIBRARY BLACKLIST by domino54               //
+//  modified for infection mode hosted by Dmark //
+// -------------------------------------------- //
 
-/**
- *	This library is connecting to a blacklist shared between
- *	all modes created by domino54 to automatically kick users
- *	reported and banned for bad behaviour.
- */
-
-#Const Version		"2016-06-23"
+#Const Version		"2017-06-12"
 #Const ScriptName	"Blacklist.Script.txt"
 
-#Include "Libs/domino54/Translations.Script.txt" as Translations
+#Include "TextLib" as TL
 
 // ---------------------------------- //
 // Constants
 // ---------------------------------- //
-#Const C_LibBlacklist_DefaultListURL	"https://raw.githubusercontent.com/domino54/title-packs/master/blacklist.xml"
-#Const C_LibBlacklist_UserMessage		"You have been kicked due your GalaxyTitles ban. Ban reason: %1."
-#Const C_LibBlacklist_ChatMessage		"User $<%1$> was kicked due their GalaxyTitles ban. Ban reason: %2."
+#Const C_LibBlacklist_DefaultListURL	""
+#Const C_LibBlacklist_UserMessage		"You have been banned. Reason: %1."
+#Const C_LibBlacklist_ChatMessage		"User $<%1$> has been banned. Reason: %2."
 #Const C_LibBlacklist_DefaultReason		"not specified"
 #Const C_LibBlacklist_CheckInterval		60000
 #Const C_LibBlacklist_HttpReqInterval	300000
@@ -130,8 +124,6 @@ Void Loop(Text _BlacklistURL) {
 		if (G_LibBlacklist_Request != Null) Http.Destroy(G_LibBlacklist_Request);
 		G_LibBlacklist_Request = Null;
 		
-		if (G_LibBlacklist_BlacklistURL == "") G_LibBlacklist_BlacklistURL = C_LibBlacklist_DefaultListURL;
-		
 		if (Http.IsValidUrl(G_LibBlacklist_BlacklistURL)) {
 			G_LibBlacklist_Request = Http.CreateGet(G_LibBlacklist_BlacklistURL, False);
 			G_LibBlacklist_RequestStartTime = Now;
@@ -167,11 +159,13 @@ Void Loop(Text _BlacklistURL) {
 				// Notify all players on the server about kick
 				if (!G_LibBlacklist_ShownReasons.exists(User.Login)) {
 					G_LibBlacklist_ShownReasons.add(User.Login);
-					Translations::SendChat([C_LibBlacklist_ChatMessage, User.Name, Reason]);
+					UIManager.UIAll.SendChat(
+						TL::Compose(C_LibBlacklist_ChatMessage, User.Name, Reason)
+					);
 				}
 				
 				// Kick the user
-				Admin_KickUser(User, Translations::Compose(User.Language, "", [C_LibBlacklist_UserMessage, Reason], ""));
+				Admin_KickUser(User, TL::Compose(C_LibBlacklist_UserMessage, Reason));
 			}
 		}
 		
