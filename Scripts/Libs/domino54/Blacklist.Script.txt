@@ -100,6 +100,37 @@ Text GetScriptVersion() { return Version; }
  */
 Text GetScriptName() { return ScriptName; }
 
+/** Check and kick user if he is in the blacklist
+ *
+ *	@param	_User		User to be checked
+ */
+Void CheckUser(CUser _User) {
+	if (_User == Null) return;
+	if (_User.Login != ServerLogin && G_LibBlacklist_BannedUsers.existskey(_User.Login)) {
+		declare Reason = G_LibBlacklist_BannedUsers[_User.Login];
+		
+		// Notify all players on the server about kick
+		if (!G_LibBlacklist_ShownReasons.exists(_User.Login)) {
+			G_LibBlacklist_ShownReasons.add(_User.Login);
+			UIManager.UIAll.SendChat(
+				TL::Compose(C_LibBlacklist_ChatMessage, _User.Name, Reason)
+			);
+		}
+		
+		// Kick the user
+		ServerAdmin.KickUser(_User, TL::Compose(C_LibBlacklist_UserMessage, Reason));
+	}
+}
+
+// ---------------------------------- //
+/** Check all users on the server
+ */
+Void CheckAllUsers() {
+	foreach (User in Users) {
+		CheckUser(User);
+	}
+}
+
 // ---------------------------------- //
 /** Library loop
  *
@@ -132,7 +163,7 @@ Void Loop(Text _BlacklistURL) {
 		// Request finished
 		if (G_LibBlacklist_Request.IsCompleted) {
 			Private_UpdateBlacklistFromXML(G_LibBlacklist_Request.Result);
-			CheckAllPlayers();
+			CheckAllUsers();
 			Http.Destroy(G_LibBlacklist_Request);
 			G_LibBlacklist_Request = Null;
 		}
@@ -150,29 +181,5 @@ Void Loop(Text _BlacklistURL) {
 	if (G_LibBlacklist_PrevMapLoaded != MapLoaded) {
 		G_LibBlacklist_PrevMapLoaded = MapLoaded;
 		if (!MapLoaded) G_LibBlacklist_ShownReasons.clear();
-	}
-}
-
-Void CheckUser(CUser _User) {
-	if (_User == Null) return;
-	if (_User.Login != ServerLogin && G_LibBlacklist_BannedUsers.existskey(_User.Login)) {
-		declare Reason = G_LibBlacklist_BannedUsers[_User.Login];
-		
-		// Notify all players on the server about kick
-		if (!G_LibBlacklist_ShownReasons.exists(_User.Login)) {
-			G_LibBlacklist_ShownReasons.add(_User.Login);
-			UIManager.UIAll.SendChat(
-				TL::Compose(C_LibBlacklist_ChatMessage, _User.Name, Reason)
-			);
-		}
-		
-		// Kick the user
-		Admin_KickUser(_User, TL::Compose(C_LibBlacklist_UserMessage, Reason));
-	}
-}
-
-Void CheckAllUsers() {
-	foreach (User in Users) {
-		CheckUser(User);
 	}
 }
