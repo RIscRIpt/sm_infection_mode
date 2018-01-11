@@ -100,7 +100,7 @@
 #Setting S_SurvivorRocketMax                4           as "survivor maximum rockets"
 #Setting S_SurvivorNucleusMax               1           as "<hidden>"
 #Setting S_SurvivorArrowMax                 2           as "<hidden>"
-#Setting S_BlacklistURL	                    ""		    as "<hidden>" // URL of the blacklist file
+#Setting S_BlacklistURL	                    ""          as "<hidden>" // URL of the blacklist file
 
 #Const   C_MaxSignedInteger                 2147483647
 
