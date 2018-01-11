@@ -101,6 +101,7 @@
 #Setting S_SurvivorNucleusMax               1           as "<hidden>"
 #Setting S_SurvivorArrowMax                 2           as "<hidden>"
 #Setting S_BlacklistURL	                    ""          as "<hidden>" // URL of the blacklist file
+#Setting S_InfectFirstLeaver                True        as "<hidden>" //as "infect player who leave being the only first infected"
 
 #Const   C_MaxSignedInteger                 2147483647
 
@@ -225,6 +226,9 @@ declare Boolean G_InfectionStarted;
 
 declare Integer G_InfectedPlayerCount;
 declare Ident   G_FirstInfectedId;
+
+declare Boolean G_InfectPrevFirstInfected;
+declare Text    G_PrevFirstInfectedLogin;
 
 declare Ident[] G_ProtectionQueue;
 
@@ -561,9 +565,13 @@ if(IsAllowedToPlay(Player)) {
     if(IScores::SyncPlayerInfo(Player)) {
         InitializePlayer(Player);
     }
-    if(IsOperating() && G_InfectionStarted && S_InfectNewPlayers) {
-        if(!IsInfected(Player)) {
-            Infect(Player, Null, "", True);
+    if(IsOperating()) {
+        if((G_InfectionStarted && S_InfectNewPlayers)
+        || S_InfectFirstLeaver && G_PrevFirstInfectedLogin == Player.User.Login
+        ) {
+            if(!IsInfected(Player)) {
+                Infect(Player, Null, "", True);
+            }
         }
     }
     if(S_KnockoutMode) {
@@ -643,6 +651,16 @@ if(EndTime > -1 && EndTime <= Now) {
             EndTime = Now + S_TimeLimit;
         } else {
             EndTime = -1;
+        }
+
+        // Infect first leaver (should be before GetFirstInfected, because it resets G_PrevFirstInfectedLogin)
+        if (G_InfectPrevFirstInfected && S_InfectFirstLeaver) {
+            foreach(Player in Players) {
+                if (G_PrevFirstInfectedLogin == Player.User.Login) {
+                    Infect(Player, Null, "", True);
+                    break;
+                }
+            }
         }
 
         declare FirstInfected = GetFirstInfected();
@@ -815,6 +833,7 @@ if(Prev_InfectedPlayerCount != G_InfectedPlayerCount) {
             if(firstInfectionTime > InfectionTime) {
                 firstInfectionTime = InfectionTime;
                 G_FirstInfectedId = Infected.Id;
+                G_PrevFirstInfectedLogin = Infected.User.Login;
             }
         }
         // If the unlucky first infected was found,
@@ -853,9 +872,6 @@ if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount 
 SM::UnspawnAllPlayers();
 DestroyAllBotPlayers();
 
-StartTime = -1;
-EndTime   = -1;
-
 if(!G_QuickRestart) {
     if(S_RewardFirstInfected > 0.0 && Players.existskey(G_FirstInfectedId)) {
         declare FirstInfected <=> Players[G_FirstInfectedId];
@@ -885,6 +901,13 @@ if(!G_QuickRestart) {
     }
     UIManager.UIAll.BigMessage    = BigMessage;
     UIManager.UIAll.StatusMessage = StatusMessage;
+
+    // Check for first infected leaver
+    if (G_InfectedPlayerCount == 1 && EndTime > 0 && S_InfectFirstLeaver) {
+        G_InfectPrevFirstInfected = True;
+    } else {
+        G_InfectPrevFirstInfected = False;
+    }
 
     // Check for limits
     if(!S_KnockoutMode) {
@@ -977,6 +1000,9 @@ if(!G_QuickRestart) {
     UIManager.UIAll.StatusMessage        = "";
     UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::Normal;
 }
+
+StartTime = -1;
+EndTime   = -1;
 
 ***
 
@@ -1309,6 +1335,7 @@ CSmPlayer GetFirstInfected() {
     log(TL::Compose(C_UnexpectedBehaviour, "GetFirstInfected", "" ^ RandomNum));
     if(PlayersCount() > 0) {
         G_FirstInfectedId = Players[0].Id;
+        G_PrevFirstInfectedLogin = Infected.User.Login;
         return Players[0];
     }
 
