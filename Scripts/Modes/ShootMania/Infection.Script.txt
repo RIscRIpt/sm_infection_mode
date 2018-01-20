@@ -36,7 +36,7 @@
 #Include "Libs/RIscRIpt/InfectionScores.Script.txt" as IScores
 #Include "Libs/domino54/Blacklist.Script.txt" as Blacklist
 
-#Setting S_IsChannelServer                  False       as "<hidden>" //set to True if channel server
+//#Setting S_IsChannelServer                  False       as "<hidden>" //set to True if channel server
 #Setting S_Paused                           False       as "<hidden>" //as "enable pause"
 #Setting S_PauseMessage                     ""          as "<hidden>" //as "pause message (bigmessage; statusmessage)"
 #Setting S_PauseKeepResultsOnUnpause        True        as "<hidden>" //as "keep results on unpause"
