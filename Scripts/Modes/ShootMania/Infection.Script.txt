@@ -19,9 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#Extends "Modes/ShootMania/ModeBase.Script.txt"
+#Extends "Modes/ShootMania/Base/ModeShootmania.Script.txt"
 
-#Const Version    "2017-06-17"
+#Const Version    "2018-01-20"
 #Const ScriptName "Infection.Script.txt"
 
 #Include "TextLib" as TL
@@ -36,6 +36,7 @@
 #Include "Libs/RIscRIpt/InfectionScores.Script.txt" as IScores
 #Include "Libs/domino54/Blacklist.Script.txt" as Blacklist
 
+#Setting S_IsChannelServer                  False       as "<hidden>" //set to True if channel server
 #Setting S_Paused                           False       as "<hidden>" //as "enable pause"
 #Setting S_PauseMessage                     ""          as "<hidden>" //as "pause message (bigmessage; statusmessage)"
 #Setting S_PauseKeepResultsOnUnpause        True        as "<hidden>" //as "keep results on unpause"
@@ -218,6 +219,8 @@
 
 declare Boolean G_IsDebugging;
 
+declare Integer G_RoundNb;
+
 declare Boolean G_IsPaused;
 declare Boolean G_QuickRestart;
 
@@ -259,21 +262,21 @@ declare Integer G_Knockout_Stage;
 declare Integer G_Knockout_RoundNb;
 declare Boolean G_Knockout_FirstRound;
 
-***LogVersion***
+***Match_LogVersions***
 ***
-MB_LogVersion(ScriptName                   , Version);
-MB_LogVersion(Layers::GetScriptName()      , Layers::GetScriptVersion());
-MB_LogVersion(Message::GetScriptName()     , Message::GetScriptVersion());
-MB_LogVersion(Tabs::GetScriptName()        , Tabs::GetScriptVersion());
-MB_LogVersion(SM::GetScriptName()          , SM::GetScriptVersion());
-MB_LogVersion(IScores::GetScriptName()     , IScores::GetScriptVersion());
-MB_LogVersion(SpawnScreen::GetScriptName() , SpawnScreen::GetScriptVersion());
-MB_LogVersion(Manialink::GetScriptName()   , Manialink::GetScriptVersion());
-MB_LogVersion(ITree::GetScriptName()       , ITree::GetScriptVersion());
-MB_LogVersion(Blacklist::GetScriptName()   , Blacklist::GetScriptVersion());
+Log::RegisterScript(ScriptName                   , Version);
+Log::RegisterScript(Layers::GetScriptName()      , Layers::GetScriptVersion());
+Log::RegisterScript(Message::GetScriptName()     , Message::GetScriptVersion());
+Log::RegisterScript(Tabs::GetScriptName()        , Tabs::GetScriptVersion());
+Log::RegisterScript(SM::GetScriptName()          , SM::GetScriptVersion());
+Log::RegisterScript(IScores::GetScriptName()     , IScores::GetScriptVersion());
+Log::RegisterScript(SpawnScreen::GetScriptName() , SpawnScreen::GetScriptVersion());
+Log::RegisterScript(Manialink::GetScriptName()   , Manialink::GetScriptVersion());
+Log::RegisterScript(ITree::GetScriptName()       , ITree::GetScriptVersion());
+Log::RegisterScript(Blacklist::GetScriptName()   , Blacklist::GetScriptVersion());
 ***
 
-***InitServer***
+***Match_InitServer***
 ***
 UIManager.UILayerDestroyAll();
 SM::SetupDefaultVisibility();
@@ -283,7 +286,7 @@ UIManager.UIAll.OverlayHide321Go       = True;
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 ***
 
-***StartServer***
+***Match_StartServer***
 ***
 IScores::Load();
 ITree::Load();
@@ -298,9 +301,11 @@ UIManager.UIAll.UILayers.add(TabsLayer);
 
 Layers::Create(C_MainManialinkLayer, GenerateManialink());
 Layers::Attach(C_MainManialinkLayer);
+
+ChannelProgression::Enable(S_IsChannelServer);
 ***
 
-***StartMap***
+***Match_StartMap***
 ***
 // Check if script is running in test environment (from map editor or local server)
 if(ServerLogin == "") {
@@ -423,16 +428,14 @@ SpawnScreen::CreateScores();
 SpawnScreen::CreatePrettyRules(ModeName);
 ***
 
-***InitSubmatch***
+***Match_InitMatch***
 ***
 IScores::MatchBegin();
 
 InitGame();
-
-MB_UseSectionSubmatch = True;
 ***
 
-***InitRound***
+***Match_InitRound***
 ***
 G_PrevPlayerProcTime = -1;
 G_InfectionStarted   = False;
@@ -443,13 +446,13 @@ UseForcedClans = S_UseClans;
 UseSameWallJump  = S_UseSameWallJump;
 UsePvPWeapons    = !S_PursuitMode;
 UsePvPCollisions = S_UsePVPCollisions;
-
-MB_UseSectionRound = True;
 ***
 
 
-***StartRound***
+***Match_StartRound***
 ***
+G_RoundNb += 1;
+
 IScores::RoundBegin();
 
 if(S_KnockoutMode) {
@@ -547,12 +550,6 @@ CropProtectionQueue();
 G_QuickRestart = False;
 ***
 
-
-***InitTurn***
-***
-MB_UseSectionTurn = False;
-***
-
 ***OnNewPlayer***
 ***
 
@@ -623,7 +620,7 @@ if(UI != Null) {
 
 ***
 
-***Yield***
+***Match_Yield***
 ***
 Message::Loop();
 Tabs::XmlRpcLoop();
@@ -634,7 +631,7 @@ if(S_BlacklistURL != "") {
 }
 ***
 
-***PlayLoop***
+***Match_PlayLoop***
 ***
 if(G_PrevPlayerProcTime + C_InfectionTick < Now) {
     G_PrevPlayerProcTime = Now;
@@ -869,7 +866,7 @@ if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount 
 
 ***
 
-***EndRound***
+***Match_EndRound***
 ***
 
 SM::UnspawnAllPlayers();
@@ -897,7 +894,7 @@ if(!G_QuickRestart) {
         BigMessage = C_TxtAllPlayersInfected;
     } else if(G_InfectedPlayerCount == 0) {
         BigMessage = C_TxtNoMoreInfected;
-        MB_SectionRoundNb -= 1;
+        G_RoundNb -= 1;
     } else {
         BigMessage    = C_TxtTimeLimitReached;
         StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(PlayersCount() - G_InfectedPlayerCount));
@@ -916,7 +913,7 @@ if(!G_QuickRestart) {
     if(!S_KnockoutMode) {
         // Regular mode limits
 
-        if(S_RoundLimit > 0 && MB_SectionRoundNb >= S_RoundLimit) {
+        if(S_RoundLimit > 0 && G_RoundNb >= S_RoundLimit) {
             MB_StopMap();
         } else if(S_ScoreLimit > 0) {
             foreach(Player in Players) {
@@ -1009,13 +1006,13 @@ EndTime   = -1;
 
 ***
 
-***EndSubmatch***
+***Match_EndSubmatch***
 ***
 IScores::MatchEnd();
 
 ***
 
-***EndMap***
+***Match_EndMap***
 ***
 
 UIManager.UIAll.BigMessage    = "";
@@ -1075,7 +1072,7 @@ G_CondGates_Up_Always.clear();
 G_CondGates_Up_EachRound.clear();
 ***
 
-***EndServer***
+***Match_EndServer***
 ***
 SpawnScreen::DestroyRules();
 SpawnScreen::DestroyMapInfo();
@@ -1138,14 +1135,13 @@ Void RestartGame() {
     InitGame();
 
     G_QuickRestart = True;
-    MB_StopSubmatch();
-    MB_SectionSubmatchNb -= 1;
+    MB_RestartScript();
 }
 
 Void RestartRound() {
     G_QuickRestart = True;
     MB_StopRound();
-    MB_SectionRoundNb -= 1;
+    G_RoundNb -= 1;
 }
 
 Boolean IsKnockoutStarted() {
@@ -1476,7 +1472,7 @@ Void UpdateScoresTableFooter() {
         if(S_RoundLimit > 0) {
             if(TxtFooter != "")
                 TxtFooter ^= "   |   ";
-            TxtFooter ^= _("Round") ^ " " ^ MB_SectionRoundNb ^ "/" ^ S_RoundLimit;
+            TxtFooter ^= _("Round") ^ " " ^ G_RoundNb ^ "/" ^ S_RoundLimit;
         }
         if(S_ScoreLimit > 0) {
             if(TxtFooter != "")
