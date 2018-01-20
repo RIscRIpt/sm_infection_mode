@@ -482,8 +482,9 @@ if(!G_IsPaused) {
     Message::CleanAllMessages();
 }
 
-G_FirstInfectedId     = NullId;
-G_InfectedPlayerCount = 0;
+G_FirstInfectedId        = NullId;
+G_PrevFirstInfectedLogin = "";
+G_InfectedPlayerCount    = 0;
 
 // Required to uninfect all players
 foreach(Player in AllPlayers) {
@@ -1317,6 +1318,7 @@ CSmPlayer GetFirstInfected() {
             return Players[G_FirstInfectedId];
         }
         G_FirstInfectedId = NullId;
+        G_PrevFirstInfectedLogin = "";
     }
 
     declare Real RandomNum = RealRandom(1.0);
@@ -1327,6 +1329,7 @@ CSmPlayer GetFirstInfected() {
         RandomNum -= ProbFirstInf;
         if(RandomNum <= 0.0) {
             G_FirstInfectedId = Player.Id;
+            G_PrevFirstInfectedLogin = Player.User.Login;
             return Player;
         }
     }
@@ -1335,11 +1338,12 @@ CSmPlayer GetFirstInfected() {
     log(TL::Compose(C_UnexpectedBehaviour, "GetFirstInfected", "" ^ RandomNum));
     if(PlayersCount() > 0) {
         G_FirstInfectedId = Players[0].Id;
-        G_PrevFirstInfectedLogin = Infected.User.Login;
+        G_PrevFirstInfectedLogin = Players[0].User.Login;
         return Players[0];
     }
 
     G_FirstInfectedId = NullId;
+    G_PrevFirstInfectedLogin = "";
     return Null;
 }
 
