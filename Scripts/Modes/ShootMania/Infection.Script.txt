@@ -278,6 +278,8 @@ Log::RegisterScript(Blacklist::GetScriptName()   , Blacklist::GetScriptVersion()
 
 ***Match_InitServer***
 ***
+Debug("InitServer");
+
 UIManager.UILayerDestroyAll();
 SM::SetupDefaultVisibility();
 UIManager.UIAll.AltMenuNoCustomScores  = True;
@@ -288,6 +290,8 @@ UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel:
 
 ***Match_StartServer***
 ***
+Debug("StartServer");
+
 IScores::Load();
 ITree::Load();
 Tabs::Load();
@@ -307,6 +311,8 @@ ChannelProgression::Enable(S_IsChannelServer);
 
 ***Match_StartMap***
 ***
+Debug("StartMap");
+
 // Check if script is running in test environment (from map editor or local server)
 if(ServerLogin == "") {
     // force debug to true
@@ -430,6 +436,8 @@ SpawnScreen::CreatePrettyRules(ModeName);
 
 ***Match_InitMatch***
 ***
+Debug("InitMatch");
+
 IScores::MatchBegin();
 
 InitGame();
@@ -437,6 +445,8 @@ InitGame();
 
 ***Match_InitRound***
 ***
+Debug("InitRound");
+
 G_PrevPlayerProcTime = -1;
 G_InfectionStarted   = False;
 
@@ -451,6 +461,8 @@ UsePvPCollisions = S_UsePVPCollisions;
 
 ***Match_StartRound***
 ***
+Debug("StartRound");
+
 G_RoundNb += 1;
 
 IScores::RoundBegin();
@@ -868,6 +880,7 @@ if((G_InfectionStarted && G_InfectedPlayerCount == 0) || (G_InfectedPlayerCount 
 
 ***Match_EndRound***
 ***
+Debug("EndRound");
 
 SM::UnspawnAllPlayers();
 DestroyAllBotPlayers();
@@ -1006,14 +1019,17 @@ EndTime   = -1;
 
 ***
 
-***Match_EndSubmatch***
+***Match_EndMatch***
 ***
+Debug("EndMatch");
+
 IScores::MatchEnd();
 
 ***
 
 ***Match_EndMap***
 ***
+Debug("EndMap");
 
 UIManager.UIAll.BigMessage    = "";
 UIManager.UIAll.StatusMessage = "";
@@ -1074,6 +1090,8 @@ G_CondGates_Up_EachRound.clear();
 
 ***Match_EndServer***
 ***
+Debug("EndServer");
+
 SpawnScreen::DestroyRules();
 SpawnScreen::DestroyMapInfo();
 UIManager.ResetAll();
