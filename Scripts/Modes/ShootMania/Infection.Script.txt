@@ -2352,6 +2352,46 @@ Void InitializePlayer(CSmPlayer _Player) {
     }
 }
 
+Void KnockoutMessage(Text _Message) {
+    UIManager.UIAll.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutMessage(CUser _User, Text _Message) {
+    declare UI <=> UIManager.GetUI(_User);
+    if(UI != Null)
+        UI.SendChat(C_Knockout_TxtPrefix ^ _Message);
+}
+
+Void KnockoutUser(CUser _User, Text _Reason) {
+    if(S_KnockoutMode_Kick) {
+        Admin_KickUser(_User, _Reason);
+    } else {
+        declare UI <=> UIManager.GetUI(_User);
+        if(UI == Null) {
+            Admin_KickUser(_User, _Reason);
+        } else if(!UI.ForceSpectator) {
+            UI.ForceSpectator = True;
+            KnockoutMessage(_User, _Reason);
+        }
+    }
+}
+
+Void KnockoutEnable() {
+    KnockoutMessage("Knockout mode has been enabled!");
+    KnockoutInit();
+    if(IsOperating()) {
+        RestartGame();
+    }
+}
+
+Void KnockoutDisable() {
+    KnockoutMessage("Knockout mode has been disabled.");
+    KnockoutInit();
+    if(IsOperating()) {
+        RestartGame();
+    }
+}
+
 Void OperativePlayLoop() {
     declare CSmPlayer[] UnspawnedPlayers;
 
@@ -2449,46 +2489,6 @@ Void NonoperationalPlayLoop() {
 
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
-}
-
-Void KnockoutMessage(Text _Message) {
-    UIManager.UIAll.SendChat(C_Knockout_TxtPrefix ^ _Message);
-}
-
-Void KnockoutMessage(CUser _User, Text _Message) {
-    declare UI <=> UIManager.GetUI(_User);
-    if(UI != Null)
-        UI.SendChat(C_Knockout_TxtPrefix ^ _Message);
-}
-
-Void KnockoutUser(CUser _User, Text _Reason) {
-    if(S_KnockoutMode_Kick) {
-        Admin_KickUser(_User, _Reason);
-    } else {
-        declare UI <=> UIManager.GetUI(_User);
-        if(UI == Null) {
-            Admin_KickUser(_User, _Reason);
-        } else if(!UI.ForceSpectator) {
-            UI.ForceSpectator = True;
-            KnockoutMessage(_User, _Reason);
-        }
-    }
-}
-
-Void KnockoutEnable() {
-    KnockoutMessage("Knockout mode has been enabled!");
-    KnockoutInit();
-    if(IsOperating()) {
-        RestartGame();
-    }
-}
-
-Void KnockoutDisable() {
-    KnockoutMessage("Knockout mode has been disabled.");
-    KnockoutInit();
-    if(IsOperating()) {
-        RestartGame();
-    }
 }
 
 Void Pause() {
