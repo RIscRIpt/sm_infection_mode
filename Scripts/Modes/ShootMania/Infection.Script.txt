@@ -1581,6 +1581,9 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt, Boolean _Sup
     if(!IsAllowedToPlay(_Victim) || (_Infector != Null && !IsAllowedToPlay(_Infector)))
         return;
 
+    if(_Infector != Null && _Infector.SpawnStatus != CSmPlayer::ESpawnStatus::Spawned)
+        return;
+
     declare netwrite Boolean Net_Infected     for _Victim;
     declare netwrite Real Net_NearestSurvivor for _Victim;
 
