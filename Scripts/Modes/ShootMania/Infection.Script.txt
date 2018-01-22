@@ -564,7 +564,6 @@ G_QuickRestart = False;
 
 ***OnNewPlayer***
 ***
-
 declare UI <=> UIManager.GetUI(Player);
 
 if(IsAllowedToPlay(Player)) {
@@ -2357,6 +2356,14 @@ Void OperativePlayLoop() {
     declare CSmPlayer[] UnspawnedPlayers;
 
     foreach(Player in Players) {
+        declare MB_NewPlayer for Player = True;
+        declare MB_NewSpectator for Player = True;
+        if(MB_NewPlayer) {
+            MB_NewPlayer = False;
+            MB_NewSpectator = True;
+            +++OnNewPlayer+++
+        }
+
         if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
             if(IsAllowedToPlay(Player))
                 UnspawnedPlayers.add(Player);
@@ -2398,6 +2405,16 @@ Void OperativePlayLoop() {
         ManageIdlePlayer(Player);
     }
 
+    foreach(Spectator in Spectators) {
+        declare MB_NewPlayer for Spectator = True;
+        declare MB_NewSpectator for Spectator = True;
+        if(MB_NewSpectator) {
+            MB_NewPlayer = True;
+            MB_NewSpectator = False;
+            +++OnNewSpectator+++
+        }
+    }
+
     if(UnspawnedPlayers.count > 0)
         SpawnAndInitPlayers(UnspawnedPlayers);
 }
@@ -2406,9 +2423,27 @@ Void NonoperationalPlayLoop() {
     declare CSmPlayer[] UnspawnedPlayers;
 
     foreach(Player in Players) {
+        declare MB_NewPlayer for Player = True;
+        declare MB_NewSpectator for Player = True;
+        if(MB_NewPlayer) {
+            MB_NewPlayer = False;
+            MB_NewSpectator = True;
+            +++OnNewPlayer+++
+        }
+
         if(Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned) {
             UnspawnedPlayers.add(Player);
             continue;
+        }
+    }
+
+    foreach(Spectator in Spectators) {
+        declare MB_NewPlayer for Spectator = True;
+        declare MB_NewSpectator for Spectator = True;
+        if(MB_NewSpectator) {
+            MB_NewPlayer = True;
+            MB_NewSpectator = False;
+            +++OnNewSpectator+++
         }
     }
 
