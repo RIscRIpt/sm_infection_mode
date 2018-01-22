@@ -22,7 +22,7 @@ Void MatchBegin(Boolean _G_LibScore_UseLadder) {
     G_LibScore_UseLadder = _G_LibScore_UseLadder;
     if(G_LibScore_UseLadder)
         Mode::Ladder_OpenMatch_All();
-    This.ClearScores();
+    ClearScores();
 }
 
 Void MatchBegin() {

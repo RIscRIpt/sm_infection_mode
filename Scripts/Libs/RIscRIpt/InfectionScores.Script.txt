@@ -4,7 +4,7 @@
 #Include "TextLib" as TL
 #Include "MathLib" as ML
 #Include "Libs/Nadeo/Top2.Script.txt" as Top
-#Include "Libs/Nadeo/ScoresTable3.Script.txt" as ST
+#Include "Libs/Nadeo/ScoresTable2.Script.txt" as ST
 #Include "Libs/RIscRIpt/Score.Script.txt" as Scores
 
 #Const  C_Status_Spectator              0
