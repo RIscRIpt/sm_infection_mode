@@ -4,7 +4,7 @@
 #Include "TextLib" as TL
 #Include "MathLib" as ML
 #Include "Libs/Nadeo/Top2.Script.txt" as Top
-#Include "Libs/Nadeo/ScoresTable2.Script.txt" as ST
+#Include "Libs/Nadeo/ScoresTable3.Script.txt" as ST
 #Include "Libs/RIscRIpt/Score.Script.txt" as Scores
 
 #Const  C_Status_Spectator              0
@@ -268,7 +268,7 @@ Void IncSurvivals(CSmPlayer _Player, Integer _Points) {
     Net_LibIS_Round_Survivals += 1;
 
     Top::SetRecord(_Player, C_TopSurivals, TL::ToText(Net_LibIS_Match_Survivals), -Net_LibIS_Match_Survivals);
-    Scores::AddPoints(_Player, _Points);
+    AddPoints(_Player, _Points);
 }
 
 Void IncHits(CSmPlayer _Player, Integer _Points) {
@@ -279,7 +279,7 @@ Void IncHits(CSmPlayer _Player, Integer _Points) {
     Net_LibIS_Round_Hits += _Points;
 
     Top::SetRecord(_Player, C_TopHits, TL::ToText(Net_LibIS_Match_Hits), -Net_LibIS_Match_Hits);
-    Scores::AddPoints(_Player, _Points);
+    AddPoints(_Player, _Points);
 }
 
 Void IncInfections(CSmPlayer _Player, Integer _Points) {
@@ -290,7 +290,7 @@ Void IncInfections(CSmPlayer _Player, Integer _Points) {
     Net_LibIS_Round_Infections += 1;
 
     Top::SetRecord(_Player, C_TopInfections, TL::ToText(Net_LibIS_Match_Infections), -Net_LibIS_Match_Infections);
-    Scores::AddPoints(_Player, _Points);
+    AddPoints(_Player, _Points);
 }
 
 Void RoundEnd() {
@@ -308,4 +308,3 @@ Void Unload() {
 Void Loop() {
     Top::Loop();
 }
-

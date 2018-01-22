@@ -4,6 +4,7 @@
 #Include "MathLib" as MathLib
 #Include "TextLib" as TextLib
 #Include "Libs/Nadeo/Mode.Script.txt" as Mode
+#Include "Libs/Nadeo/ShootMania/Scores.Script.txt" as Scores
 
 declare Boolean G_LibScore_UseLadder;
 
@@ -16,6 +17,8 @@ Text GetScriptName() {
 }
 
 Void MatchBegin(Boolean _G_LibScore_UseLadder) {
+    Scores::EnablePlayerNegativePoints(True, True, True);
+
     G_LibScore_UseLadder = _G_LibScore_UseLadder;
     if(G_LibScore_UseLadder)
         Mode::Ladder_OpenMatch_All();
@@ -44,29 +47,27 @@ Void MatchEnd() {
 }
 
 Void ClearScores() {
-    This.ClearScores();
+    Scores::Clear(0); // C_Level_Server
 }
 
 Void RoundBegin() {
     foreach(Score in Scores) {
-        Score.RoundPoints = 0;
+        Scores::Clear(3); // C_Level_Round
     }
 }
 
 Void RoundEnd() {
     foreach(Score in Scores) {
-        Score.Points += Score.RoundPoints;
-        Score.RoundPoints = 0;
+        Scores::AffectPlayerRoundToMapPoints(Score);
     }
 }
 
 Void AddPoints(CSmPlayer _Player, Integer _Points) {
     if(_Player != Null && _Player.Score != Null) {
-        _Player.Score.RoundPoints += _Points;
+        Scores::AddPlayerRoundPoints(_Player.Score, _Points);
     }
 }
 
 Void ReducePoints(CSmPlayer _Player, Integer _Points) {
     AddPoints(_Player, -_Points);
 }
-
