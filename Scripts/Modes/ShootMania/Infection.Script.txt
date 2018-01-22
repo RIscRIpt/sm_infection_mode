@@ -1140,6 +1140,8 @@ Void KnockoutInit() {
 }
 
 Void InitGame() {
+    G_RoundNb = 0;
+
     G_InfectedPlayerCount = 0;
 
     Debug("Clearing protection queue");
