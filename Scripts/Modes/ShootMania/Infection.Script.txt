@@ -288,6 +288,21 @@ UIManager.UIAll.OverlayHide321Go       = True;
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 ***
 
+***Match_InitServer***
+***
+MB_Settings_UseDefaultUIManagement = False;
+MB_Settings_UseDefaultTimer = False;
+MB_Settings_UseDefaultHud = False;
+MB_Settings_UseDefaultScores = False;
+MB_Settings_UseDefaultClansScoresUI = False;
+MB_Settings_UseDefaultSpawnScreen = False;
+MB_Settings_UseDefaultBaseIllumination = False;
+MB_Settings_UseDefaultObjects = False;
+MB_Settings_UseDefaultDispenserObjects = False;
+MB_Settings_UseMatchmakingImplementationHelper = False;
+MB_Settings_UseDefaultMatchmaking = False;
+***
+
 ***Match_StartServer***
 ***
 Debug("StartServer");
@@ -432,11 +447,6 @@ SpawnScreen::AddSubsection("Description", Description, 80.);
 SpawnScreen::CreateMapInfo();
 SpawnScreen::CreateScores();
 SpawnScreen::CreatePrettyRules(ModeName);
-***
-
-***Match_InitMatch***
-***
-Debug("InitMatch");
 
 IScores::MatchBegin();
 
