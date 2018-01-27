@@ -950,7 +950,7 @@ if(!G_QuickRestart) {
     UIManager.UIAll.StatusMessage = StatusMessage;
 
     // Check for first infected leaver
-    if (G_InfectedPlayerCount == 1 && EndTime > 0 && S_InfectFirstLeaver) {
+    if (G_InfectedPlayerCount == 0 && EndTime > 0 && S_InfectFirstLeaver) {
         G_InfectPrevFirstInfected = True;
     } else {
         G_InfectPrevFirstInfected = False;
