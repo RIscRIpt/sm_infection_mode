@@ -1394,13 +1394,7 @@ CSmPlayer GetFirstInfected() {
 }
 
 CSmPlayer GetAnySurvivor() {
-    declare CSmPlayer[] _Players;
-    if(IsKnockoutStarted()) {
-        _Players = G_Knockout_Players;
-    } else {
-        _Players = Players;
-    }
-    foreach(Player in _Players) {
+    foreach(Player in Players) {
         if(!IsInfected(Player) && IsAllowedToPlay(Player))
             return Player;
     }
