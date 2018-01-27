@@ -1183,7 +1183,7 @@ Void RestartGame() {
     InitGame();
 
     G_QuickRestart = True;
-    MB_RestartScript();
+    MB_StopRound();
 }
 
 Void RestartRound() {
