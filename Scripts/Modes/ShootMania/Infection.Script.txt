@@ -140,6 +140,7 @@
 #Const   C_WasIdleTooLongMovingToSpec       "$z$s was idle for too long. Moving to spectators."
 #Const   C_IdlePlayerWarning                "$sYou are considered inactive!"
 
+#Const   C_TxtInfectedLeaver                "$6d0[Infection] $z$s%1$z$s was infected, because of an attempt of skipping being first!"
 #Const   C_TxtYouInfectedA                  "$0f0You infected $fff%1"
 #Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
 #Const   C_TxtAInfectedB                    "%1 $z$sinfected $z$s%2"
@@ -524,7 +525,6 @@ if(!G_IsPaused) {
 }
 
 G_FirstInfectedId        = NullId;
-G_PrevFirstInfectedLogin = "";
 G_InfectedPlayerCount    = 0;
 
 // Required to uninfect all players
@@ -695,6 +695,7 @@ if(EndTime > -1 && EndTime <= Now) {
             foreach(Player in Players) {
                 if (G_PrevFirstInfectedLogin == Player.User.Login) {
                     Infect(Player, Null, "", True);
+                    UIManager.UIAll.SendChat(TL::Compose(C_TxtInfectedLeaver, Player.Name));
                     break;
                 }
             }
