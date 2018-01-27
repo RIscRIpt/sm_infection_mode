@@ -165,7 +165,7 @@ Label_Col.Value = "$" ^ TL::ColorToText({{{C_ST_Color_Survivals}}}) ^ TL::ToText
     ST::SetColTextAlign(C_ST_Col_Id_Hits         , C_ST_Col_Align_Hits);
     ST::SetColTextAlign(C_ST_Col_Id_Survivals    , C_ST_Col_Align_Survivals);
 
-    ST::GetLayer().Type = CUILayer::EUILayerType::ScoresTable;
+    ST::GetLayer().Type = CUILayer::EUILayerType::Normal;
 
     ST::Build("SM");
 }
