@@ -148,9 +148,11 @@
 #Const   C_TxtPlayerInfectedByWater         "%1 $z$swas infected by water!"
 #Const   C_TxtPlayerWasEliminated           "%1 $z$swas very curious and got aids!"
 
+#Const   C_TxtIsLastSurvivor                "%1$z$s is the last survivor!"
 #Const   C_TxtAllPlayersInfected            "All players are infected!"
 #Const   C_TxtTimeLimitReached              "Time limit reached!"
-#Const   C_TxtNPlayersSurvivied             "$f00%1 $fffplayer(s) survived!"
+#Const   C_TxtOnePlayerSurvived             "%1$z$s survived!"
+#Const   C_TxtNPlayersSurvived              "$f00%1 $fffplayers survived!"
 #Const   C_TxtNoMoreInfected                "No more infected players!"
 #Const   C_TxtAtLeastNPlayersNeeded         "At least $f00%1$z players are needed!"
 #Const   C_TxtWaitingPlayers                "$f92Waiting for Players"
@@ -160,12 +162,12 @@
 
 #Const   C_TxtOperatingModeStatusMsg """Currently on the server:
 -   $080%1$g infected,
--   $f00%2$g survivors, and
--   $aaa%3$g spectators.
+-   $f00%2$g survivor(s), and
+-   $aaa%3$g spectator(s).
 """
 #Const   C_TxtNotOperatingModeStatusMsg """Currently on the server:
--   $fff%1$g players, and
--   $aaa%2$g spectators.
+-   $fff%1$g player(s), and
+-   $aaa%2$g spectator(s).
 """
 
 #Const   C_LastSurvivorMsgDuration          6000
@@ -709,8 +711,8 @@ if(EndTime > -1 && EndTime <= Now) {
             foreach(Survivor in AllPlayers) {
                 if(IsInfected(Survivor))
                     continue;
-
                 Message::SendBigMessage(Survivor, FirstInfected.Name ^ "$z$s$360 is the first infected!", 4000, 1);
+                break;
             }
         } else {
             // This must not happen
@@ -928,8 +930,15 @@ if(!G_QuickRestart) {
         BigMessage = C_TxtNoMoreInfected;
         G_RoundNb -= 1;
     } else {
-        BigMessage    = C_TxtTimeLimitReached;
-        StatusMessage = TL::Compose(C_TxtNPlayersSurvivied, TL::ToText(PlayersCount() - G_InfectedPlayerCount));
+        BigMessage = C_TxtTimeLimitReached;
+        if(PlayersCount() > 1) {
+            StatusMessage = TL::Compose(C_TxtNPlayersSurvived, TL::ToText(PlayersCount() - G_InfectedPlayerCount));
+        } else {
+            declare CSmPlayer LastSurvivor = GetAnySurvivor();
+            if(LastSurvivor != Null) {
+                StatusMessage = TL::Compose(C_TxtOnePlayerSurvived, LastSurvivor.Name);
+            }
+        }
     }
     UIManager.UIAll.BigMessage    = BigMessage;
     UIManager.UIAll.StatusMessage = StatusMessage;
@@ -1384,6 +1393,20 @@ CSmPlayer GetFirstInfected() {
     return Null;
 }
 
+CSmPlayer GetAnySurvivor() {
+    declare CSmPlayer[] _Players;
+    if(IsKnockoutStarted()) {
+        _Players = G_Knockout_Players;
+    } else {
+        _Players = Players;
+    }
+    foreach(Player in _Players) {
+        if(!IsInfected(Player) && IsAllowedToPlay(Player))
+            return Player;
+    }
+    return Null;
+}
+
 Void SetupArmor(CSmPlayer _Player, Integer _Max, Integer _Current) {
     if(_Max > 0) {
         _Player.ArmorMax = _Max * C_ArmorUnit;
@@ -1702,19 +1725,10 @@ Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt, Boolean _Sup
         // Display last survivor
         if(G_InfectedPlayerCount == PlayersCount() - 1) {
             // Get last survivor
-            declare CSmPlayer LastSurvivor = Null;
-            foreach(Player in Players) {
-                if(!IsInfected(Player) && IsAllowedToPlay(Player)) {
-                    LastSurvivor = Player;
-                    break;
-                }
-            }
+            declare CSmPlayer LastSurvivor = GetAnySurvivor();
             if(LastSurvivor != Null) {
                 Message::SendBigMessage(
-                    TL::Compose(
-                        "%1$z$s is the last survivor!",
-                        LastSurvivor.Name
-                    ),
+                    TL::Compose(C_TxtIsLastSurvivor, LastSurvivor.Name),
                     C_LastSurvivorMsgDuration,
                     C_LastSurvivorMsgPriority
                 );
