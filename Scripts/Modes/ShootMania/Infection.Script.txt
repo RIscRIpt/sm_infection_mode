@@ -158,6 +158,16 @@
 #Const   C_TxtGetBackToBattleField          "Get back to the battlefield!"
 #Const   C_TxtYouWillBeInfectedInX          "You will be infected in $080%1"
 
+#Const   C_TxtOperatingModeStatusMsg """Currently on the server:
+-   $080%1$g infected,
+-   $f00%2$g survivors, and
+-   $aaa%3$g spectators.
+"""
+#Const   C_TxtNotOperatingModeStatusMsg """Currently on the server:
+-   $fff%1$g players, and
+-   $aaa%2$g spectators.
+"""
+
 #Const   C_LastSurvivorMsgDuration          6000
 #Const   C_LastSurvivorMsgPriority          2
 
@@ -1529,16 +1539,18 @@ Void UpdateScoresTableFooter() {
 }
 
 Void UpdateModeStatusMessage() {
-    ModeStatusMessage = TL::Compose(
-        """Currently on the server:
--   $080%1$g infected,
--   $f00%2$g survivors, and
--   $aaa%3$g spectators.
-    """,
-        TL::ToText(G_InfectedPlayerCount),
-        TL::ToText(PlayersCount() - G_InfectedPlayerCount),
-        TL::ToText(Spectators.count)
-    );
+    if(IsOperating()) {
+        ModeStatusMessage = TL::Compose(C_TxtOperatingModeStatusMsg,
+            TL::ToText(G_InfectedPlayerCount),
+            TL::ToText(PlayersCount() - G_InfectedPlayerCount),
+            TL::ToText(Spectators.count)
+        );
+    } else {
+        ModeStatusMessage = TL::Compose(C_TxtNotOperatingModeStatusMsg,
+            TL::ToText(PlayersCount()),
+            TL::ToText(Spectators.count)
+        );
+    }
 }
 
 Void RewardInfector(CSmPlayer _Infector, Real _Score) {
