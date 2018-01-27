@@ -1621,7 +1621,7 @@ Void OnBump(CSmModeEvent _Event) {
         declare Text Message;
         if(Player == _Event.Shooter) {
             Message = TL::Compose(C_TxtYouBumpedA, _Event.Victim.Name);
-        } else if (Player == _Victim) {
+        } else if (Player == _Event.Victim) {
             Message = TL::Compose(C_TxtABumpedYou, _Event.Shooter.Name);
         } else {
             Message = TL::Compose(C_TxtABumpedB, _Event.Shooter.Name, _Event.Victim.Name);
