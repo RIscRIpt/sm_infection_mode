@@ -291,6 +291,10 @@ Void IncInfections(CSmPlayer _Player, Integer _Points) {
 }
 
 Void RoundEnd() {
+    // Force EndRound now so scores limit would properly work.
+    // It is called automatically, but in MB_Private_AfterEndRound,
+    // which happens After EndRound (so scores limit is delayed by 1 round).
+    Scores::EndRound();
 }
 
 Void MatchEnd() {
