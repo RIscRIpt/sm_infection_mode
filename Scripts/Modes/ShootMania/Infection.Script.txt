@@ -310,7 +310,6 @@ MB_Settings_UseDefaultPodiumSequence = False;
 MB_Settings_UseDefaultUIManagement = False;
 MB_Settings_UseDefaultTimer = False;
 MB_Settings_UseDefaultHud = False;
-MB_Settings_UseDefaultScores = False;
 MB_Settings_UseDefaultClansScoresUI = False;
 MB_Settings_UseDefaultSpawnScreen = False;
 MB_Settings_UseDefaultBaseIllumination = False;

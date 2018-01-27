@@ -5,7 +5,7 @@
 #Include "MathLib" as ML
 #Include "Libs/Nadeo/Top2.Script.txt" as Top
 #Include "Libs/Nadeo/ScoresTable2.Script.txt" as ST
-#Include "Libs/RIscRIpt/Score.Script.txt" as Scores
+#Include "Libs/Nadeo/ShootMania/Scores.Script.txt" as Scores
 
 #Const  C_Status_Spectator              0
 #Const  C_Status_Survivor               1
@@ -206,7 +206,6 @@ Boolean SyncPlayerInfo(CSmPlayer _Player) {
 Void MatchBegin() {
     G_LibST_RoundId = 0;
 
-    Scores::MatchBegin();
     ST::ClearScores();
     Top::ResetAll();
 
@@ -239,15 +238,13 @@ Void MatchBegin() {
 Void RoundBegin() {
     G_LibST_RoundId += 1;
 
-    Scores::RoundBegin();
-
     foreach(Player in Players) {
         SyncPlayerInfo(Player);
     }
 }
 
 Void AddPoints(CSmPlayer _Player, Integer _Points) {
-    Scores::AddPoints(_Player, _Points);
+    Scores::AddPlayerRoundPoints(_Player.Score, _Points);
 }
 
 Void SetStatus(CSmPlayer _Player, Integer _Status) {
@@ -294,11 +291,9 @@ Void IncInfections(CSmPlayer _Player, Integer _Points) {
 }
 
 Void RoundEnd() {
-    Scores::RoundEnd();
 }
 
 Void MatchEnd() {
-    Scores::MatchEnd();
 }
 
 Void Unload() {
