@@ -144,6 +144,10 @@
 #Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
 #Const   C_TxtAInfectedB                    "%1 $z$sinfected %2"
 
+#Const   C_TxtYouBumpedA                    "$f00You bumped $fff%1"
+#Const   C_TxtABumpedYou                    "%1 $z$s$f00infected you"
+#Const   C_TxtABumpedB                      "%1 $z$s$f00bumped %2"
+
 #Const   C_TxtPlayerDrowned                 "$z$s drowned in water!"
 #Const   C_TxtPlayerInfectedByWater         "%1 $z$swas infected by water!"
 #Const   C_TxtPlayerWasEliminated           "%1 $z$swas very curious and got aids!"
@@ -753,6 +757,7 @@ foreach(Event in PendingEvents) {
                     OnHit(Event, S_HitSurvivorScore);
                     PassOn(Event);
                 } else {
+                    OnBump(Event);
                     Discard(Event);
                 }
             } else if(!VictimInfected && ShooterInfected) {
@@ -761,6 +766,7 @@ foreach(Event in PendingEvents) {
                 Discard(Event);
             } else {
                 // OnInfectedHitInfected
+                OnBump(Event);
                 Discard(Event);
             }
         }
@@ -1607,6 +1613,27 @@ Boolean IsProtectedByMap(CSmPlayer _Player) {
 
 Void OnHit(CSmModeEvent _Event, Integer _PointsForHit) {
     IScores::IncHits(_Event.Shooter, _PointsForHit);
+}
+
+Void OnBump(CSmModeEvent _Event) {
+    foreach(Player in AllPlayers) {
+        declare Text Message;
+        if(Player == _Event.Shooter) {
+            Message = TL::Compose(C_TxtYouBumpedA, _Event.Victim.Name);
+        } else if (Player == _Victim) {
+            Message = TL::Compose(C_TxtABumpedYou, _Event.Shooter.Name);
+        } else {
+            Message = TL::Compose(C_TxtABumpedB, _Event.Shooter.Name, _Event.Victim.Name);
+        }
+        UIManager.GetUI(Player).SendNotice(
+            Message,
+            CUIConfig::ENoticeLevel::PlayerInfo,
+            _Event.Shooter.User,
+            CUIConfig::EAvatarVariant::Default,
+            CUIConfig::EUISound::PlayerHit,
+            0
+        );
+    }
 }
 
 Void Infect(CSmPlayer _Victim, CSmPlayer _Infector, Text _CauseFmt, Boolean _SuppressNotifications) {
