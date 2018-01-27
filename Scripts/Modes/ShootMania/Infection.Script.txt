@@ -288,7 +288,7 @@ UIManager.UIAll.OverlayHide321Go       = True;
 UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel::MatchInfo;
 ***
 
-***Match_InitServer***
+***Match_Settings***
 ***
 MB_Settings_UseDefaultUIManagement = False;
 MB_Settings_UseDefaultTimer = False;
