@@ -306,6 +306,7 @@ UIManager.UIAll.NoticesFilter_LevelToShowAsBigMessage = CUIConfig::ENoticeLevel:
 
 ***Match_Settings***
 ***
+MB_Settings_UseDefaultPodiumSequence = False;
 MB_Settings_UseDefaultUIManagement = False;
 MB_Settings_UseDefaultTimer = False;
 MB_Settings_UseDefaultHud = False;
