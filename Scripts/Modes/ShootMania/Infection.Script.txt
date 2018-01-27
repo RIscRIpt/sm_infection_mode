@@ -142,11 +142,11 @@
 
 #Const   C_TxtYouInfectedA                  "$0f0You infected $fff%1"
 #Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
-#Const   C_TxtAInfectedB                    "%1 $z$sinfected %2"
+#Const   C_TxtAInfectedB                    "%1 $z$sinfected $z$s%2"
 
 #Const   C_TxtYouBumpedA                    "$f00You bumped $fff%1"
 #Const   C_TxtABumpedYou                    "%1 $z$s$f00infected you"
-#Const   C_TxtABumpedB                      "%1 $z$s$f00bumped %2"
+#Const   C_TxtABumpedB                      "%1 $z$s$f00bumped $z$s%2"
 
 #Const   C_TxtPlayerDrowned                 "$z$s drowned in water!"
 #Const   C_TxtPlayerInfectedByWater         "%1 $z$swas infected by water!"
