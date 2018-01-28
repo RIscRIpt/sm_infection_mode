@@ -160,7 +160,7 @@
 #Const   C_TxtOnePlayerSurvived             "%1$z$s survived!"
 #Const   C_TxtNPlayersSurvived              "$f00%1 $fffplayers survived!"
 #Const   C_TxtNoMoreInfected                "No more infected players!"
-#Const   C_TxtAtLeastNPlayersNeeded         "At least $f00%1$z players are needed!"
+#Const   C_TxtAtLeastNPlayersNeeded         "At least $f00%1$z$s players are needed!"
 #Const   C_TxtWaitingPlayers                "$f92Waiting for Players"
 
 #Const   C_TxtGetBackToBattleField          "Get back to the battlefield!"
