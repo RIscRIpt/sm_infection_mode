@@ -142,13 +142,13 @@
 #Const   C_IdlePlayerWarning                "$sYou are considered inactive!"
 
 #Const   C_TxtInfectedLeaver                "$6d0[Infection] $z$s%1$z$s was infected, because of an attempt of skipping being first!"
-#Const   C_TxtYouInfectedA                  "$0f0You infected $fff%1"
-#Const   C_TxtAInfectedYou                  "%1 $z$s$0f0infected you"
-#Const   C_TxtAInfectedB                    "%1 $z$sinfected $z$s%2"
+#Const   C_TxtYouInfectedA                  "$0f0You have infected $fff%1"
+#Const   C_TxtAInfectedYou                  "%1$z$s$0f0 has infected you"
+#Const   C_TxtAInfectedB                    "%1$z$s has infected $z$s%2"
 
-#Const   C_TxtYouBumpedA                    "$f00You bumped $fff%1"
-#Const   C_TxtABumpedYou                    "%1 $z$s$f00infected you"
-#Const   C_TxtABumpedB                      "%1 $z$s$f00bumped $z$s%2"
+#Const   C_TxtYouBumpedA                    "$f00You have bumped $fff%1"
+#Const   C_TxtABumpedYou                    "%1$z$s$f00 has bumped you"
+#Const   C_TxtABumpedB                      "%1$z$s$f00 has bumped $z$s%2"
 
 #Const   C_TxtPlayerDrowned                 "$z$s drowned in water!"
 #Const   C_TxtPlayerInfectedByWater         "%1 $z$swas infected by water!"
