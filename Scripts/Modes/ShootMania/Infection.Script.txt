@@ -66,6 +66,7 @@
 #Setting S_SurvivorDetectorMaxDist          20.0        as "survivor detector max distance"
 #Setting S_CanLeaveMapFor                   3000        as "can leave battlefield for (ms)"
 #Setting S_ForceSpecAfter                   60000       as "force inactive players to spectators after (ms)"
+#Setting S_ForceSpecNotification            10000       as "when it's less than specified amount of ms, notification for idle player will be shown"
 #Setting S_CanIdleAfterSpawn                10000       as "player can be idle after spawning for (ms)"
 #Setting S_InfectOnPreparationRespawn       True        as "infect on respawn during preparation"
 #Setting S_ForceFirstInfected               False       as "choose first infected even if someone got infected"
@@ -138,7 +139,7 @@
 #Const   C_TxtRoundEnd                      "A round ends either if no survivors are left or if the time limit is reached."
 
 #Const   C_PlayerIsIdle                     "$z$s is idle."
-#Const   C_WasIdleTooLongMovingToSpec       "$z$s was idle for too long. Moving to spectators."
+#Const   C_WasIdleTooLong                   "$z$s was idle for too long."
 #Const   C_IdlePlayerWarning                "$sYou are considered inactive!"
 
 #Const   C_TxtInfectedLeaver                "$6d0[Infection] $z$s%1$z$s was infected, because of an attempt of skipping being first!"
@@ -1908,11 +1909,20 @@ Void ManageMapLeaver(CSmPlayer _Player) {
 }
 
 Void ManageIdlePlayer(CSmPlayer _Player) {
-    if(S_ForceSpecAfter <= 0 || _Player.IdleDuration < S_ForceSpecAfter) {
+    if(S_ForceSpecAfter <= 0) {
         return;
     }
 
-    if(_Player.RequestsSpectate) {
+    declare netwrite Integer Net_IdleForceSpecTime for Player;
+    if (_Player.IdleDuration >= S_ForceSpecAfter - S_ForceSpecNotification) {
+        Net_IdleForceSpecTime = Now + S_ForceSpecAfter - _Player.IdleDuration;
+    } else {
+        Net_IdleForceSpecTime = 0;
+    }
+
+    if (_Player.IdleDuration < S_ForceSpecAfter
+    ||  _Player.RequestsSpectate)
+    {
         return;
     }
 
@@ -1937,7 +1947,7 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
 
     UI.ForceSpectator = True;
     Users_RequestSwitchToSpectator(_Player.User);
-    UIManager.UIAll.SendChat(_Player.Name ^ C_WasIdleTooLongMovingToSpec);
+    UIManager.UIAll.SendChat(_Player.Name ^ C_WasIdleTooLong);
     UIManager.UIAll.SendNotice(
         _Player.Name ^ C_PlayerIsIdle,
         CUIConfig::ENoticeLevel::PlayerInfo,
@@ -2378,8 +2388,9 @@ Void SpawnAndInitPlayers(CSmPlayer[] _Players) {
 
 // Initializes and un-infects player
 Void InitializePlayer(CSmPlayer _Player) {
-    declare netwrite Boolean Net_Infected     for _Player;
+    declare netwrite Boolean Net_Infected for _Player;
     declare netwrite Real Net_NearestSurvivor for _Player;
+    declare netwrite Integer Net_IdleForceSpecTime for _Player;
 
     declare Ident InfectorId      for _Player;
     declare Boolean Infected      for _Player;
@@ -2388,8 +2399,9 @@ Void InitializePlayer(CSmPlayer _Player) {
 
     declare Integer LeftMapSince  for _Player;
 
-    Net_Infected        = False;
-    Net_NearestSurvivor = 0.0;
+    Net_Infected          = False;
+    Net_NearestSurvivor   = 0.0;
+    Net_IdleForceSpecTime = 0;
 
     InfectorId          = NullId;
     Infected            = False;
@@ -2659,10 +2671,11 @@ Text GenerateManialink() {
         main() {
             wait(InputPlayer != Null);
 
-            declare netread Net_InfectedCount   for Teams[0] = 0;
-            declare netread Net_PlayerCount     for Teams[0] = 0;
-            declare netread Net_Infected        for InputPlayer = False;
-            declare netread Net_NearestSurvivor for InputPlayer = 0.0;
+            declare netread Net_InfectedCount     for Teams[0] = 0;
+            declare netread Net_PlayerCount       for Teams[0] = 0;
+            declare netread Net_Infected          for InputPlayer = False;
+            declare netread Net_NearestSurvivor   for InputPlayer = 0.0;
+            declare netread Net_IdleForceSpecTime for InputPlayer = 0;
 
             declare Real NearestSurvivor = 0.0;
             declare Boolean IsSpawned = False;
@@ -2710,8 +2723,8 @@ Text GenerateManialink() {
                 }
 
                 if({{{S_ForceSpecAfter > 0}}}) {
-                    if(IsSpawned && InputPlayer.IdleDuration >= {{{S_ForceSpecAfter * 0.8}}}) {
-                        declare Integer TimeLeft = {{{S_ForceSpecAfter}}} - InputPlayer.IdleDuration;
+                    if(IsSpawned && Net_IdleForceSpecTime > GameTime) {
+                        declare Integer TimeLeft = Net_IdleForceSpecTime - GameTime;
                         Label_Idle_Text.Opacity  = 0.5 + 0.5 * ML::Sin(Now / (50.0 * ML::PI()));
                         Label_Idle_Text.Visible  = True;
                         if(TimeLeft >= 0) {
