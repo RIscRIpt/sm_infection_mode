@@ -1613,6 +1613,8 @@ Void OnHit(CSmModeEvent _Event, Integer _PointsForHit) {
 }
 
 Void OnBump(CSmModeEvent _Event) {
+    if (_Event.Victim == Null || _Event.Victim.Name == Null) // Victim is Gate
+        return;
     foreach(Player in AllPlayers) {
         declare Text Message;
         if(Player == _Event.Shooter) {
