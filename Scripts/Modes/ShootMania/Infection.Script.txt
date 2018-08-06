@@ -1614,7 +1614,7 @@ Void OnHit(CSmModeEvent _Event, Integer _PointsForHit) {
 }
 
 Void OnBump(CSmModeEvent _Event) {
-    if (_Event.Victim == Null || _Event.Victim.Name == Null) // Victim is Gate
+    if (_Event.Victim == Null) // Victim is Gate
         return;
     foreach(Player in AllPlayers) {
         declare Text Message;
@@ -1913,7 +1913,7 @@ Void ManageIdlePlayer(CSmPlayer _Player) {
         return;
     }
 
-    declare netwrite Integer Net_IdleForceSpecTime for Player;
+    declare netwrite Integer Net_IdleForceSpecTime for _Player;
     if (_Player.IdleDuration >= S_ForceSpecAfter - S_ForceSpecNotification) {
         Net_IdleForceSpecTime = Now + S_ForceSpecAfter - _Player.IdleDuration;
     } else {
