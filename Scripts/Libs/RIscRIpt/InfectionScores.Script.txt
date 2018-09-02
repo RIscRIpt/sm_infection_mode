@@ -232,6 +232,8 @@ Void MatchBegin() {
         Net_LibIS_Match_Hits       = 0;
         Net_LibIS_Match_Infections = 0;
         Net_LibIS_Sync_RoundNb     = -1;
+
+        Scores::SetPlayerRoundPoints(Player.Score, 0);
     }
 }
 
