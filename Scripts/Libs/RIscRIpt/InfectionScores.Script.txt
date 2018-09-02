@@ -234,6 +234,8 @@ Void MatchBegin() {
         Net_LibIS_Sync_RoundNb     = -1;
 
         Scores::SetPlayerRoundPoints(Player.Score, 0);
+        Scores::SetPlayerMapPoints(Player.Score, 0);
+        Scores::SetPlayerMatchPoints(Player.Score, 0);
     }
 }
 
