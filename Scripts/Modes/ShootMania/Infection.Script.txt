@@ -2690,6 +2690,9 @@ Text GenerateManialink() {
             while(True) {
                 yield;
 
+                if (InputPlayer == Null)
+                    continue;
+
                 IsSpawned = InputPlayer.SpawnStatus == CSmPlayer::ESpawnStatus::Spawned;
 
                 if(Net_InfectedCount >= 0) {
